@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: postgres18_container
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: hoshid
+      TZ: Asia/Tokyo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hoshid_frontend
+    env_file:
+      - ./frontend/.env.development
+    environment:
+      PORT: "3000"
+      DATABASE_URL: "postgres://user:pass@db:5432/hoshid?sslmode=disable"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      BETTER_AUTH_SECRET: "dev-secret-change-me-please-32-chars"
+      OIDC_ADMIN_BOOTSTRAP_TOKEN: "test-bootstrap-token"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    restart: unless-stopped
+volumes:
+  pgdata:
+
+

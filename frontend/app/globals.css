@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f6f8;
+  --foreground: #111827;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f4f6f8 0%, #edf1f5 100%);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), var(--font-geist-mono), sans-serif;
+}
+
+html {
+  height: 100%;
+}
+
+#__next {
+  min-height: 100vh;
+}
+
+/* Fix native date input appearance when used inside MUI TextField */
+input[type="date"] {
+  -webkit-appearance: textfield;
+  appearance: textfield;
+  padding: 12px 14px; /* match MUI sizing */
+  height: auto;
+  line-height: 1.4;
+}
+
+/* Ensure calendar picker icon sits inside the input and does not overlap text */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  right: 8px;
+  padding: 6px;
+  opacity: 0.9;
+}

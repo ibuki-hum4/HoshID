@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prisma-migrate
+  namespace: hoshid
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: frontend-sa
+      containers:
+        - name: prisma-migrate
+          image: hoshid/frontend:latest
+          command:
+            - /bin/sh
+            - -c
+            - bunx prisma migrate deploy
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: hoshid-config
+                  key: DATABASE_URL
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      restartPolicy: Never
