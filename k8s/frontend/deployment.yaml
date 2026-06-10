@@ -19,6 +19,9 @@ spec:
     metadata:
       labels:
         app: frontend
+      # oidc-jwk-rotation CronJob がロールアウト再起動時に
+      # kubectl.kubernetes.io/restartedAt を書き込むため、空でも明示しておく
+      annotations: {}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -96,6 +99,13 @@ spec:
                 secretKeyRef:
                   name: hoshid-secrets
                   key: OIDC_JWK_CURRENT
+            # 任意: ローテーション中の旧鍵（oidc-jwk-rotation CronJob が設定する）
+            - name: OIDC_JWK_PREVIOUS
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: OIDC_JWK_PREVIOUS
+                  optional: true
             # SMTP（メール確認・パスワードリセット送信用。すべて hoshid-secrets で管理）
             - name: SMTP_HOST
               valueFrom:

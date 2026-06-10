@@ -54,18 +54,19 @@ node scripts/generate-oidc-jwk.mjs
 （`.env.production.example` 参照）。Secretへ反映する場合は
 `kubectl create secret generic` を使うのが簡単（後述）。
 
-鍵をローテーションする場合は、現在の `OIDC_JWK_CURRENT` の値を
-`OIDC_JWK_PREVIOUS` にコピーしてから、新しく生成した値を
-`OIDC_JWK_CURRENT` に設定する（旧鍵で発行済みのトークンが期限切れになるまで
-`OIDC_JWK_PREVIOUS` を残す）。
+鍵のローテーションは `oidc-jwk-rotation` CronJob
+（`k8s/frontend/jwk-rotation-cronjob.yaml`）が毎月自動的に実行する。詳細・手動
+ローテーション手順は「OIDC鍵の自動ローテーション (CronJob)」および
+`frontend/docs/jwks-rotation-and-audit-runbook.md` を参照。
 
 ## デプロイメント手順
 
 ### 1. Podman イメージのビルド＆プッシュ
 
-アプリ本体（`runner` ステージ）に加えて、Prisma CLI を含む `migrator` ステージも
-マイグレーションJob用にビルド＆プッシュする（standalone 出力には Prisma CLI が
-含まれないため、マイグレーションは別イメージで実行する）。
+アプリ本体（`runner` ステージ）に加えて、Prisma CLI を含む `migrator` ステージと
+OIDC鍵ローテーション用の `jwk-rotator` ステージもそれぞれの用途向けに
+ビルド＆プッシュする（standalone 出力にはこれらのCLI/スクリプトが
+含まれないため、別イメージで実行する）。
 
 ```bash
 cd frontend
@@ -79,6 +80,11 @@ podman push docker.io/yourname/hoshid/frontend:latest
 podman build --target migrator -t hoshid/frontend:migrate -f Dockerfile .
 podman tag hoshid/frontend:migrate docker.io/yourname/hoshid/frontend:migrate
 podman push docker.io/yourname/hoshid/frontend:migrate
+
+# OIDC鍵ローテーション用（jwk-rotator ステージ）
+podman build --target jwk-rotator -t hoshid/frontend:jwk-rotator -f Dockerfile .
+podman tag hoshid/frontend:jwk-rotator docker.io/yourname/hoshid/frontend:jwk-rotator
+podman push docker.io/yourname/hoshid/frontend:jwk-rotator
 ```
 
 ### 2. Secret の作成 & ConfigMap の編集
@@ -152,11 +158,18 @@ podman push gcr.io/your-project/hoshid/frontend:latest
 ```
 
 **kustomization.yaml でイメージを更新：**
+
+`newTag` は指定しないこと。`newTag` を指定すると `runner` /
+`migrator` / `jwk-rotator` の各タグ（`:latest` / `:migrate` /
+`:jwk-rotator`）が一律で上書きされ、マイグレーションJobや鍵ローテーション
+CronJobが誤ったイメージ（`runner`）で起動してしまう。`newName` のみを
+指定すれば、各マニフェストで指定されたタグを保ったままレジストリ名だけ
+差し替えられる。
+
 ```yaml
 images:
   - name: hoshid/frontend
     newName: docker.io/yourusername/hoshid/frontend  # 実際のレジストリ
-    newTag: latest
 ```
 
 **プライベートレジストリの場合、imagePullSecrets を追加：**
@@ -238,6 +251,36 @@ kubectl logs -n hoshid -l app=frontend -f
 # サービス確認
 kubectl get svc -n hoshid
 ```
+
+## OIDC鍵の自動ローテーション (CronJob)
+
+`oidc-jwk-rotation` CronJob（`k8s/frontend/jwk-rotation-cronjob.yaml` /
+`k8s/frontend/jwk-rotation-rbac.yaml`。`kubectl apply -k k8s/` で他のリソースと
+同時に作成される）が毎月1日 18:00 UTC に `OIDC_JWK_CURRENT` /
+`OIDC_JWK_PREVIOUS` の自動ローテーションと `frontend` Deployment の
+ロールアウト再起動を行う。
+
+- `OIDC_JWK_PREVIOUS` が未失効の場合は何もしない（旧鍵で発行済みのトークンを
+  検証できる間はローテーションをスキップする）
+- それ以外の場合: 現在の `OIDC_JWK_CURRENT` を `OIDC_JWK_PREVIOUS` に降格
+  （`OIDC_JWK_GRACE_PERIOD_DAYS` 日後に失効するスタンプを付与）し、新しい鍵を
+  `OIDC_JWK_CURRENT` として生成、`frontend` Deployment をロールアウト再起動する
+- 専用の ServiceAccount `oidc-jwk-rotator` には `hoshid-secrets` Secret と
+  `frontend` Deployment に対する最小限の `get`/`patch` 権限のみが
+  `resourceNames` で絞って付与される（`k8s/frontend/jwk-rotation-rbac.yaml`）
+
+CronJob の動作はジョブ内の環境変数で調整できる（既定値は
+`k8s/frontend/jwk-rotation-cronjob.yaml` で設定済み）：
+
+| 変数 | 既定値 | 説明 |
+|------|--------|------|
+| `OIDC_JWK_ROTATION_NAMESPACE` | `hoshid` | 対象Namespace |
+| `OIDC_JWK_ROTATION_SECRET_NAME` | `hoshid-secrets` | 対象Secret名 |
+| `OIDC_JWK_ROTATION_DEPLOYMENT` | `frontend` | ロールアウト再起動対象のDeployment名 |
+| `OIDC_JWK_GRACE_PERIOD_DAYS` | `7` | 降格した旧鍵を検証用に残す日数 |
+
+実行ログの確認方法・手動ローテーション手順は
+`frontend/docs/jwks-rotation-and-audit-runbook.md` を参照。
 
 ## トラブルシューティング
 

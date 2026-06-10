@@ -1,4 +1,9 @@
+import { render } from "@react-email/render";
 import nodemailer from "nodemailer";
+
+import { ApprovalCredentialsEmail } from "@/emails/approval-credentials-email";
+import { PasswordResetEmail } from "@/emails/password-reset-email";
+import { VerificationEmail } from "@/emails/verification-email";
 
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 
@@ -32,20 +37,19 @@ export async function sendVerificationEmail(email: string, url: string) {
   const fromEmail = process.env.SMTP_FROM || "noreply@hoshid.local";
 
   try {
+    const element = <VerificationEmail url={url} />;
     await transporter.sendMail({
       from: fromEmail,
       to: email,
       subject: "HoshID - メールアドレス確認",
-      html: `
-        <h2>メールアドレス確認</h2>
-        <p>以下のリンクをクリックしてメールアドレスを確認してください。</p>
-        <p><a href="${url}">メールアドレスを確認</a></p>
-        <p>リンクは24時間有効です。</p>
-      `,
-      text: `メールアドレス確認: ${url}`,
+      html: await render(element),
+      text: await render(element, { plainText: true }),
     });
   } catch (error) {
-    console.error(`[Email] Failed to send verification email to ${email}:`, error);
+    console.error(
+      `[Email] Failed to send verification email to ${email}:`,
+      error,
+    );
     throw error;
   }
 }
@@ -55,20 +59,19 @@ export async function sendPasswordResetEmail(email: string, url: string) {
   const fromEmail = process.env.SMTP_FROM || "noreply@hoshid.local";
 
   try {
+    const element = <PasswordResetEmail url={url} />;
     await transporter.sendMail({
       from: fromEmail,
       to: email,
       subject: "HoshID - パスワードリセット",
-      html: `
-        <h2>パスワードリセット</h2>
-        <p>以下のリンクをクリックしてパスワードをリセットしてください。</p>
-        <p><a href="${url}">パスワードをリセット</a></p>
-        <p>リンクは1時間有効です。</p>
-      `,
-      text: `パスワードリセット: ${url}`,
+      html: await render(element),
+      text: await render(element, { plainText: true }),
     });
   } catch (error) {
-    console.error(`[Email] Failed to send password reset email to ${email}:`, error);
+    console.error(
+      `[Email] Failed to send password reset email to ${email}:`,
+      error,
+    );
     throw error;
   }
 }
@@ -82,21 +85,21 @@ export async function sendApprovalCredentialsEmail(
   const fromEmail = process.env.SMTP_FROM || "noreply@hoshid.local";
 
   try {
+    const element = (
+      <ApprovalCredentialsEmail loginEmail={loginEmail} password={password} />
+    );
     await transporter.sendMail({
       from: fromEmail,
       to: recipientEmail,
       subject: "HoshID - アカウント承認のお知らせ",
-      html: `
-        <h2>アカウント承認のお知らせ</h2>
-        <p>申請が承認されました。以下の情報でログインしてください。</p>
-        <p><strong>ログインメールアドレス:</strong> ${loginEmail}</p>
-        <p><strong>初期パスワード:</strong> ${password}</p>
-        <p>ログイン後にパスワードを変更してください。</p>
-      `,
-      text: `アカウント承認のお知らせ\nログインメールアドレス: ${loginEmail}\n初期パスワード: ${password}\nログイン後にパスワードを変更してください。`,
+      html: await render(element),
+      text: await render(element, { plainText: true }),
     });
   } catch (error) {
-    console.error(`[Email] Failed to send approval credentials to ${recipientEmail}:`, error);
+    console.error(
+      `[Email] Failed to send approval credentials to ${recipientEmail}:`,
+      error,
+    );
     throw error;
   }
 }

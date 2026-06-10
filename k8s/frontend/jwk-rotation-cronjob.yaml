@@ -1,0 +1,47 @@
+# OIDC JWT 署名鍵 (hoshid-secrets の OIDC_JWK_CURRENT/OIDC_JWK_PREVIOUS) を
+# 定期的にローテーションする CronJob。
+#
+# 動作:
+#   - OIDC_JWK_PREVIOUS が未失効の場合は何もしない（検証用の旧鍵を温存する）
+#   - それ以外の場合、OIDC_JWK_CURRENT を OIDC_JWK_PREVIOUS に降格
+#     （OIDC_JWK_GRACE_PERIOD_DAYS 後に失効するスタンプ付き）し、
+#     新しい OIDC_JWK_CURRENT を生成、frontend Deployment をロールアウト再起動する
+#
+# 詳細は frontend/docs/jwks-rotation-and-audit-runbook.md を参照。
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: oidc-jwk-rotation
+  namespace: hoshid
+spec:
+  # 毎月1日 18:00 UTC に実行
+  schedule: "0 18 1 * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: oidc-jwk-rotator
+          containers:
+            - name: oidc-jwk-rotation
+              image: hoshid/frontend:jwk-rotator
+              env:
+                - name: OIDC_JWK_ROTATION_NAMESPACE
+                  value: hoshid
+                - name: OIDC_JWK_ROTATION_SECRET_NAME
+                  value: hoshid-secrets
+                - name: OIDC_JWK_ROTATION_DEPLOYMENT
+                  value: frontend
+                - name: OIDC_JWK_GRACE_PERIOD_DAYS
+                  value: "7"
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "250m"
+          restartPolicy: Never

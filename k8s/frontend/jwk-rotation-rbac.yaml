@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oidc-jwk-rotator
+  namespace: hoshid
+---
+# oidc-jwk-rotation CronJob 専用の最小権限ロール。
+# hoshid-secrets の OIDC_JWK_CURRENT/OIDC_JWK_PREVIOUS の更新と、
+# frontend Deployment のロールアウト再起動のみを許可する。
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oidc-jwk-rotator
+  namespace: hoshid
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["hoshid-secrets"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["frontend"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-jwk-rotator
+  namespace: hoshid
+subjects:
+  - kind: ServiceAccount
+    name: oidc-jwk-rotator
+    namespace: hoshid
+roleRef:
+  kind: Role
+  name: oidc-jwk-rotator
+  apiGroup: rbac.authorization.k8s.io

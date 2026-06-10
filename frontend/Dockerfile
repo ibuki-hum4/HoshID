@@ -31,6 +31,22 @@ USER bun
 
 CMD ["bunx", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]
 
+# OIDC JWK ローテーション CronJob 用ステージ。
+# scripts/rotate-oidc-jwk.mjs が @kubernetes/client-node 経由で
+# hoshid-secrets Secret と frontend Deployment を更新する。
+FROM oven/bun:1.3.14-alpine AS jwk-rotator
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=builder --chown=bun:bun /app/scripts ./scripts
+COPY --from=builder --chown=bun:bun /app/package.json ./package.json
+
+USER bun
+
+CMD ["bun", "run", "scripts/rotate-oidc-jwk.mjs"]
+
 FROM oven/bun:1.3.14-alpine AS runner
 WORKDIR /app
 

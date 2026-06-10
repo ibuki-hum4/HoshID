@@ -6,6 +6,11 @@
   `OIDC_JWKS_PATH`（既定 `/api/auth/jwks`）で JWKS を公開する。鍵セットは
   DBではなく環境変数から読み込まれる（`adapter.getJwks` =
   `loadRotationKeysFromEnv()`、`frontend/src/features/oauth/security/jwks.ts`）。
+- **ローテーションは `oidc-jwk-rotation` CronJob
+  （`frontend/scripts/rotate-oidc-jwk.mjs` /
+  `k8s/frontend/jwk-rotation-cronjob.yaml`）が毎月自動的に実行する。**
+  詳細は後述「自動ローテーション (CronJob)」を参照。手動手順（後述
+  「手動ローテーション」）はCronJobが使えない緊急時のフォールバック。
 
 重要な設計方針
 - 鍵は環境変数 `OIDC_JWK_CURRENT`（必須）/ `OIDC_JWK_PREVIOUS`（任意）で管理する。
@@ -13,7 +18,8 @@
   トークンも検証できる。
 - ローテーションは "新鍵を生成 -> 旧鍵を `OIDC_JWK_PREVIOUS` に退避 -> 新鍵を
   `OIDC_JWK_CURRENT` に設定 -> ロールアウト -> 移行期間後に旧鍵を削除" の
-  流れで行う（DBマイグレーションや管理APIの呼び出しは不要）。
+  流れで行う（DBマイグレーションや管理APIの呼び出しは不要）。CronJobは
+  この流れを毎月自動的に実行する。
 - Secret の値はリポジトリのファイルに書き込まない。`kubectl create secret
   generic` / `kubectl patch secret` でクラスタに直接投入する
   （`K8S_DEPLOYMENT.md` 参照）。
@@ -42,6 +48,51 @@
 - `OIDC_JWKS_JSON` に上記オブジェクトの **配列** を設定すると、
   `OIDC_JWK_CURRENT` / `OIDC_JWK_PREVIOUS` より優先して使われる
   （3鍵以上を一括管理したい場合のみ使用）。
+
+## 自動ローテーション (CronJob)
+
+`oidc-jwk-rotation` CronJob（`k8s/frontend/jwk-rotation-cronjob.yaml`、
+ServiceAccount/RBACは `k8s/frontend/jwk-rotation-rbac.yaml`）が毎月1日
+18:00 UTC に `frontend/scripts/rotate-oidc-jwk.mjs` を実行し、以下を
+自動的に行う:
+
+1. `hoshid-secrets` Secret から `OIDC_JWK_CURRENT` / `OIDC_JWK_PREVIOUS`
+   を読み取る。
+2. `OIDC_JWK_PREVIOUS` が存在し、その `expiresAt` がまだ未来の場合は
+   何もせず終了する（旧鍵で発行済みのトークンの検証可能期間を維持する）。
+3. それ以外の場合:
+   - 現在の `OIDC_JWK_CURRENT` を `OIDC_JWK_PREVIOUS` に降格し、
+     `expiresAt` に `OIDC_JWK_GRACE_PERIOD_DAYS`（既定7日）後の日時を
+     スタンプする。
+   - 新しい鍵ペアを生成して `OIDC_JWK_CURRENT` に設定する
+     （`Secret.data` をJSON Patchで更新）。
+   - `frontend` Deployment に `kubectl.kubernetes.io/restartedAt`
+     アノテーションを書き込み、ロールアウト再起動をトリガーする。
+
+CronJobはKubernetes APIのみを操作するため、通常運用で `kubectl` の
+手動操作は不要。専用のServiceAccount `oidc-jwk-rotator` には
+`hoshid-secrets` Secretと `frontend` Deploymentに対する最小限の
+`get`/`patch` 権限のみ（`resourceNames` で対象を限定）が付与されている。
+
+実行結果は起動したPodのログに `service: "oidc-jwk-rotator"` の構造化JSON
+として出力される（`jwks.rotation.skipped` / `jwks.rotation.rotated` /
+`jwks.rotation.rollout_restarted`、後述「監査ログ」参照）:
+
+```bash
+kubectl get jobs -n hoshid --sort-by=.metadata.creationTimestamp \
+  | grep oidc-jwk-rotation
+kubectl logs -n hoshid job/<oidc-jwk-rotation-xxxxxxx>
+```
+
+スケジュールやグレース期間は `k8s/frontend/jwk-rotation-cronjob.yaml`
+の環境変数で調整できる（詳細は `K8S_DEPLOYMENT.md` の「OIDC鍵の自動
+ローテーション (CronJob)」を参照）。
+
+## 手動ローテーション（緊急時 / フォールバック）
+
+通常は上記CronJobが自動でローテーションするため、以下の手順は
+CronJobが利用できない場合や、侵害が疑われる鍵を即座に失効させたい
+緊急時のみ使用する。
 
 ## Prerequisites
 - Kubernetes クラスタへの `kubectl` アクセス（`hoshid` namespace）
@@ -135,10 +186,18 @@ kubectl patch secret hoshid-secrets -n hoshid --type merge \
   - `admin.bootstrap.*`: `/api/admin/oauth/clients/go`
     （`OIDC_ADMIN_BOOTSTRAP_TOKEN` を使う管理API）の呼び出し結果。
   - `admin.make-admin.*`: 初回セットアップ時の管理者ロール付与。
-- ローテーション作業自体（`kubectl patch` 等）は Kubernetes の監査ログ
-  （API server audit log）側に記録される。クラスタの audit policy で
-  `secrets` リソースへの `patch`/`update` が記録対象になっていることを
-  確認すること。
+- `oidc-jwk-rotation` CronJob (`service: "oidc-jwk-rotator"`) のイベント
+  （`frontend/scripts/rotate-oidc-jwk.mjs`、Pod ログに出力）:
+  - `jwks.rotation.skipped`: `OIDC_JWK_PREVIOUS` が未失効のためローテー
+    ションを見送った（`previousId` / `expiresAt` を含む）。
+  - `jwks.rotation.rotated`: 鍵をローテーションした
+    （`newCurrentId` / `retiredId` / `retiredExpiresAt` を含む）。
+  - `jwks.rotation.rollout_restarted`: `frontend` Deployment の
+    ロールアウト再起動をトリガーした。
+- ローテーション作業自体（CronJobによる`patch`、または手動の
+  `kubectl patch`）は Kubernetes の監査ログ（API server audit log）側にも
+  記録される。クラスタの audit policy で `secrets` / `deployments`
+  リソースへの `patch`/`update` が記録対象になっていることを確認すること。
 
 ## 検証手順
 
@@ -172,6 +231,17 @@ curl -X POST http://localhost:3000/api/admin/oauth/clients/go \
   検証不能になるため、影響範囲をユーザーに周知する）。
 
 ## 運用チェックリスト
+
+### 通常運用（月次・自動）
+
+- [ ] `oidc-jwk-rotation` CronJob の最新Jobが成功していることを確認した
+      （`kubectl get jobs -n hoshid`）
+- [ ] Jobログに `jwks.rotation.rotated` または
+      `jwks.rotation.skipped`（意図したスキップか確認）が出力され、
+      エラーが出ていないことを確認した
+- [ ] `/api/auth/jwks` に新旧両方の `kid` が含まれることを確認した
+
+### 手動ローテーション実施時（緊急時のみ）
 
 - [ ] 新しい鍵を `node scripts/generate-oidc-jwk.mjs` で生成した
 - [ ] 現在の `OIDC_JWK_CURRENT` を `OIDC_JWK_PREVIOUS` に退避した

@@ -16,10 +16,8 @@ resources:
   - frontend/deployment.yaml
   - frontend/ingress.yaml
   - frontend/migration-job.yaml
-
-images:
-  - name: hoshid/frontend
-    newTag: latest
+  - frontend/jwk-rotation-rbac.yaml
+  - frontend/jwk-rotation-cronjob.yaml
 
 commonLabels:
   app.kubernetes.io/name: hoshid
