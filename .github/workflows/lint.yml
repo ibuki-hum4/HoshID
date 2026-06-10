@@ -24,6 +24,10 @@ jobs:
         working-directory: frontend
         run: bun install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        working-directory: frontend
+        run: bunx prisma generate --schema=prisma/schema.prisma
+
       - name: Run lint
         working-directory: frontend
         run: bun run lint
