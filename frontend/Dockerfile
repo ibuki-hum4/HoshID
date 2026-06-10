@@ -53,9 +53,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
+COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/public ./public
-COPY --from=builder --chown=bun:bun /app/.next/standalone ./
-COPY --from=builder --chown=bun:bun /app/.next/static ./.next/static
+COPY --from=builder --chown=bun:bun /app/.next ./.next
+COPY --from=builder --chown=bun:bun /app/package.json ./package.json
+COPY --from=builder --chown=bun:bun /app/next.config.ts ./next.config.ts
 
 USER bun
 

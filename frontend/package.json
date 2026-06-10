@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "bun .next/standalone/server.js",
+    "start": "next start",
     "lint": "biome check",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write",

@@ -4,17 +4,15 @@ metadata:
   name: frontend-ingress
   namespace: hoshid
   annotations:
-    kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   tls:
     - hosts:
-        - hoshid.example.com
+        - hoshid.skyia.jp
       secretName: hoshid-tls
   rules:
-    - host: hoshid.example.com
+    - host: hoshid.skyia.jp
       http:
         paths:
           - path: /
