@@ -9,6 +9,7 @@ namespace: hoshid
 resources:
   - namespace.yaml
   - configmap.yaml
+  - sealedsecret.yaml
   - db/service.yaml
   - db/statefulset.yaml
   - frontend/serviceaccount.yaml
