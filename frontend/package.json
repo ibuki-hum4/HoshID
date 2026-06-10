@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "bun .next/standalone/server.js",
     "lint": "biome check",
+    "typecheck": "tsc --noEmit",
     "format": "biome format --write",
     "healthcheck": "curl -f http://localhost:3000/api/health || exit 1"
   },
