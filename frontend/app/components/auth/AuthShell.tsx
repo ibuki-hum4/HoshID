@@ -20,7 +20,7 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
         py: { xs: 3, md: 5 },
         px: 2,
         background:
-          "linear-gradient(180deg, rgba(244, 246, 248, 0.96) 0%, rgba(237, 241, 245, 1) 100%)",
+          "linear-gradient(180deg, rgba(253, 242, 248, 0.96) 0%, rgba(252, 231, 243, 1) 100%)",
       }}
     >
       <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
@@ -60,7 +60,7 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
               borderRadius: 3,
               p: { xs: 3, md: 4 },
               backgroundColor: "background.paper",
-              border: "1px solid #d8dee5",
+              border: "1px solid #f6d7e6",
             }}
           >
             <Box sx={{ position: "relative" }}>

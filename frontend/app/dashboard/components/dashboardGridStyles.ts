@@ -20,6 +20,6 @@ export const dashboardGridSx: SxProps<Theme> = {
     borderTopColor: "divider",
   },
   "& .MuiDataGrid-row:hover": {
-    backgroundColor: "rgba(15, 118, 110, 0.04)",
+    backgroundColor: "rgba(236, 72, 153, 0.04)",
   },
 };

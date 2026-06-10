@@ -1,21 +1,29 @@
 import "server-only";
 
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { jwt, username } from "better-auth/plugins";
-import { oauthProvider } from "@better-auth/oauth-provider";
-
-import { OIDC_AUDIENCE, OIDC_ISSUER, OIDC_JWKS_PATH } from "@/src/features/oauth/config";
 import { createOidcOptions } from "@/src/features/oauth/application/oidc-policy";
-import { loadRotationKeysFromEnv } from "@/src/features/oauth/security/jwks";
+import {
+  OIDC_AUDIENCE,
+  OIDC_ISSUER,
+  OIDC_JWKS_PATH,
+} from "@/src/features/oauth/config";
 import { loadTrustedClientsFromEnv } from "@/src/features/oauth/infrastructure/trusted-clients";
-
-import { prisma } from "./prisma";
+import { loadRotationKeysFromEnv } from "@/src/features/oauth/security/jwks";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
+import { prisma } from "./prisma";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const authSecret = process.env.BETTER_AUTH_SECRET ?? "replace-me-before-production";
+
+const authSecret = process.env.BETTER_AUTH_SECRET;
+if (!authSecret) {
+  throw new Error(
+    "BETTER_AUTH_SECRET is not set. Generate one with `openssl rand -base64 32` and set it before starting the app.",
+  );
+}
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;

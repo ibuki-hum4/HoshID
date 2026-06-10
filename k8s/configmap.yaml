@@ -7,4 +7,13 @@ data:
   PORT: "3000"
   NODE_ENV: "production"
   NEXT_PUBLIC_APP_URL: "https://hoshid.example.com"
-  DATABASE_URL: "postgres://hoshid_user:changeme@db-service.hoshid.svc.cluster.local:5432/hoshid?sslmode=require"
+  TZ: "Asia/Tokyo"
+
+  # OIDC トークンの audience（未設定時は "hoshid-go-api"）
+  OIDC_AUDIENCE: "hoshid-go-api"
+
+  # 任意: 信頼済みOIDCクライアント（Go API）を登録する場合
+  # OIDC_GO_CLIENT_ID: "hoshid-go-api"
+  # OIDC_GO_REDIRECT_URLS: "https://go-api.example.com/oauth/callback"
+  # OIDC_GO_SKIP_CONSENT: "true"
+  # OIDC_GO_CLIENT_NAME: "Go API"

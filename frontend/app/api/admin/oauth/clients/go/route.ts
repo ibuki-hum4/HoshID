@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { enforceRateLimit, getClientIp } from "@/lib/api/rate-limit";
 import auditLog from "@/lib/audit";
 import { auth } from "@/lib/auth";
 
@@ -28,6 +29,16 @@ function jsonError(message: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimited = await enforceRateLimit(
+    `oauth-bootstrap:ip:${ip}`,
+    10,
+    60,
+  );
+  if (rateLimited) {
+    return rateLimited;
+  }
+
   const expectedToken = process.env.OIDC_ADMIN_BOOTSTRAP_TOKEN;
   const bootstrapToken = request.headers.get("x-admin-bootstrap-token");
 
@@ -101,10 +112,11 @@ export async function POST(request: Request) {
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     const errorStack = err instanceof Error ? err.stack : undefined;
-    auditLog("admin.bootstrap.error", { clientId, error: errorMessage });
-    return NextResponse.json(
-      { error: errorMessage, stack: errorStack },
-      { status: 500 },
-    );
+    auditLog("admin.bootstrap.error", {
+      clientId,
+      error: errorMessage,
+      stack: errorStack,
+    });
+    return jsonError("Failed to provision OAuth client", 500);
   }
 }

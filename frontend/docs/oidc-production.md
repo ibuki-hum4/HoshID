@@ -3,9 +3,8 @@
 ## File layout
 
 - `src/features/oauth/config.ts`: issuer, audience, scope allowlist, endpoint paths.
-- `src/features/oauth/security/*`: scope validation, PKCE verification, consent policy, JWKS env parsing.
+- `src/features/oauth/security/*`: scope validation, trusted-client types, JWKS env parsing.
 - `src/features/oauth/application/oidc-policy.ts`: Better Auth OAuth provider plugin options.
-- `src/features/oauth/observability/audit-log.ts`: structured JSON audit logging with masking.
 - `app/oauth/authorize/page.tsx`: consent UI used by the OIDC plugin.
 - `app/api/auth/[...better-auth]/route.ts`: Better Auth handler.
 - `app/api/auth/jwks/route.ts`: explicit JWKS route backed by the current and previous signing keys.

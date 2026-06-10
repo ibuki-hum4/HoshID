@@ -2,12 +2,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: hoshid
 
+# 注意: Secret (hoshid-secrets) はこの kustomization に含まれない。
+# `kubectl apply -k k8s/` の前に、K8S_DEPLOYMENT.md の手順に従って
+# `kubectl create secret generic hoshid-secrets -n hoshid --from-literal=...`
+# で作成しておくこと（k8s/secret.example.yaml はキー一覧の参考用）。
 resources:
   - namespace.yaml
   - configmap.yaml
-  - secret.yaml
-  - db/persistentvolume.yaml
-  - db/persistentvolumeclaim.yaml
   - db/service.yaml
   - db/statefulset.yaml
   - frontend/serviceaccount.yaml

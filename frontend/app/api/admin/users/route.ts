@@ -15,6 +15,9 @@ export async function GET(request: Request) {
     return jsonForbidden(error);
   }
 
-  const users = await listApiUsers();
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get("status") ?? undefined;
+
+  const users = await listApiUsers(status);
   return jsonOk({ users });
 }

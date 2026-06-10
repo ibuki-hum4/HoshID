@@ -6,28 +6,28 @@ const theme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#0f766e",
-      dark: "#115e59",
+      main: "#ec4899",
+      dark: "#db2777",
       contrastText: "#ffffff",
     },
     secondary: {
-      main: "#b45309",
-      dark: "#92400e",
+      main: "#a21caf",
+      dark: "#86198f",
       contrastText: "#ffffff",
     },
     background: {
-      default: "#f4f6f8",
-      paper: "#ffffff",
+      default: "#fdf2f8",
+      paper: "#fffafc",
     },
     text: {
-      primary: "#111827",
-      secondary: "#4b5563",
+      primary: "#3f1d2e",
+      secondary: "#9d6b85",
     },
-    divider: "#d8dee5",
+    divider: "#f6d7e6",
   },
   typography: {
     fontFamily:
-      "var(--font-geist-sans), var(--font-geist-mono), ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "var(--font-inter), var(--font-noto-sans-jp), ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
     h1: { fontWeight: 800 },
     h2: { fontWeight: 800 },
     h3: { fontWeight: 800 },
@@ -57,7 +57,7 @@ const theme = createTheme({
         root: {
           borderRadius: 2,
           boxShadow: "none",
-          border: "1px solid #d8dee5",
+          border: "1px solid #f6d7e6",
           backgroundImage: "none",
         },
       },
@@ -67,7 +67,7 @@ const theme = createTheme({
         root: {
           boxShadow: "none",
           backgroundImage: "none",
-          borderBottom: "1px solid #d8dee5",
+          borderBottom: "1px solid #f6d7e6",
         },
       },
     },
@@ -76,7 +76,7 @@ const theme = createTheme({
         paper: {
           boxShadow: "none",
           backgroundImage: "none",
-          borderRight: "1px solid #d8dee5",
+          borderRight: "1px solid #f6d7e6",
         },
       },
     },

@@ -1,11 +1,13 @@
 import "server-only";
 
-import type { Announcement, MemberRequest, User } from "@prisma/client";
+import type { Announcement, MemberRequest, Role, User } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { isPrismaErrorCode } from "./prisma-errors";
 
-export async function listApiUsers(): Promise<User[]> {
+export async function listApiUsers(status?: string): Promise<User[]> {
   return prisma.user.findMany({
+    where: status ? { status } : undefined,
     orderBy: { id: "asc" },
   });
 }
@@ -14,6 +16,23 @@ export async function getApiUserById(id: string): Promise<User | null> {
   return prisma.user.findUnique({
     where: { id },
   });
+}
+
+export async function updateApiUser(
+  id: string,
+  data: Partial<Pick<User, "username" | "displayUsername" | "role" | "status">>,
+): Promise<User | null> {
+  try {
+    return await prisma.user.update({
+      where: { id },
+      data,
+    });
+  } catch (error) {
+    if (isPrismaErrorCode(error, "P2025")) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function getApiUserByIdOrEmail(
@@ -67,11 +86,13 @@ export async function getMemberRequestById(
 export async function createMemberRequest(
   applicantEmail: string,
   applicantName?: string,
+  requestedUsername?: string,
 ): Promise<MemberRequest> {
   return prisma.memberRequest.create({
     data: {
       applicantEmail,
       applicantName: applicantName || null,
+      requestedUsername: requestedUsername || null,
       status: "pending",
     },
   });
@@ -93,8 +114,11 @@ export async function updateMemberRequest(
       where: { id },
       data,
     });
-  } catch {
-    return null;
+  } catch (error) {
+    if (isPrismaErrorCode(error, "P2025")) {
+      return null;
+    }
+    throw error;
   }
 }
 
@@ -124,8 +148,11 @@ export async function updateAnnouncement(
         status,
       },
     });
-  } catch {
-    return null;
+  } catch (error) {
+    if (isPrismaErrorCode(error, "P2025")) {
+      return null;
+    }
+    throw error;
   }
 }
 
@@ -135,7 +162,71 @@ export async function deleteAnnouncement(id: string): Promise<boolean> {
       where: { id },
     });
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (isPrismaErrorCode(error, "P2025")) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function listRoles(): Promise<Role[]> {
+  return prisma.role.findMany({
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function createRole(
+  name: string,
+  customId: string,
+  description: string,
+  permissionBitmask: number,
+): Promise<Role> {
+  return prisma.role.create({
+    data: {
+      name,
+      customId,
+      description,
+      permissionBitmask,
+    },
+  });
+}
+
+export async function updateRole(
+  id: string,
+  name: string,
+  customId: string,
+  description: string,
+  permissionBitmask: number,
+): Promise<Role | null> {
+  try {
+    return await prisma.role.update({
+      where: { id },
+      data: {
+        name,
+        customId,
+        description,
+        permissionBitmask,
+      },
+    });
+  } catch (error) {
+    if (isPrismaErrorCode(error, "P2025")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function deleteRole(id: string): Promise<boolean> {
+  try {
+    await prisma.role.delete({
+      where: { id },
+    });
+    return true;
+  } catch (error) {
+    if (isPrismaErrorCode(error, "P2025")) {
+      return false;
+    }
+    throw error;
   }
 }

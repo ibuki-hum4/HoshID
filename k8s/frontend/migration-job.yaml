@@ -10,16 +10,14 @@ spec:
       serviceAccountName: frontend-sa
       containers:
         - name: prisma-migrate
-          image: hoshid/frontend:latest
-          command:
-            - /bin/sh
-            - -c
-            - bunx prisma migrate deploy
+          # standalone ランタイムイメージには Prisma CLI が含まれないため、
+          # Dockerfile の migrator ステージからビルドした専用イメージを使用する
+          image: hoshid/frontend:migrate
           env:
             - name: DATABASE_URL
               valueFrom:
-                configMapKeyRef:
-                  name: hoshid-config
+                secretKeyRef:
+                  name: hoshid-secrets
                   key: DATABASE_URL
           resources:
             requests:

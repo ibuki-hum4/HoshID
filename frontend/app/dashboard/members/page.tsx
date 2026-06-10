@@ -23,7 +23,7 @@ import PageHeader from "../components/PageHeader";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
 import {
-  DEFAULT_AUTH_ORIGIN,
+  DEFAULT_API_ORIGIN,
   formatDateTime,
   readErrorMessage,
 } from "../lib/http";
@@ -32,15 +32,13 @@ import { useStoredState } from "../lib/storage";
 type Member = {
   id: string;
   email: string;
-  name?: string;
-  displayName?: string;
-  customId?: string;
-  externalEmail?: string;
-  role?: string;
-  status?: string;
-  joinedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  name: string;
+  username: string | null;
+  displayUsername: string | null;
+  role: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 const statusOptions = ["all", "active", "suspended", "archived"];
@@ -69,22 +67,7 @@ function statusLabel(status?: string) {
     case "archived":
       return "Archived";
     default:
-      return String(status ?? "pending");
-  }
-}
-
-function normalizeMemberStatus(status?: string) {
-  switch (status) {
-    case "approved":
-      return "active";
-    case "rejected":
-      return "suspended";
-    case "active":
-    case "suspended":
-    case "archived":
-      return status;
-    default:
-      return status ?? "pending";
+      return String(status ?? "active");
   }
 }
 
@@ -95,19 +78,17 @@ function toEditableText(value: unknown) {
 function normalizeMemberRow(row: Member): Member {
   return {
     ...row,
-    displayName: toEditableText(row.displayName),
-    customId: toEditableText(row.customId),
-    externalEmail: toEditableText(row.externalEmail),
+    displayUsername: toEditableText(row.displayUsername),
+    username: toEditableText(row.username),
     role: toEditableText(row.role) || "user",
-    status: normalizeMemberStatus(toEditableText(row.status)),
+    status: toEditableText(row.status) || "active",
   };
 }
 
 function areMemberRowsEqual(left: Member, right: Member) {
   return (
-    toEditableText(left.displayName) === toEditableText(right.displayName) &&
-    toEditableText(left.customId) === toEditableText(right.customId) &&
-    toEditableText(left.externalEmail) === toEditableText(right.externalEmail) &&
+    toEditableText(left.displayUsername) === toEditableText(right.displayUsername) &&
+    toEditableText(left.username) === toEditableText(right.username) &&
     toEditableText(left.role) === toEditableText(right.role) &&
     toEditableText(left.status) === toEditableText(right.status)
   );
@@ -115,7 +96,7 @@ function areMemberRowsEqual(left: Member, right: Member) {
 
 export default function MembersPage() {
   const router = useRouter();
-  const [authOrigin] = useStoredState("hoshid.authOrigin", DEFAULT_AUTH_ORIGIN);
+  const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
   const { authToken, loading: sessionLoading } = useDashboardAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const [members, setMembers] = useState<Member[]>([]);
@@ -163,15 +144,12 @@ export default function MembersPage() {
           continue;
         }
 
-        const changedFields: Partial<Record<keyof Member, string>> = {};
-        if (toEditableText(draftRow.displayName) !== toEditableText(currentRow.displayName)) {
-          changedFields.displayName = toEditableText(draftRow.displayName);
+        const changedFields: Record<string, string> = {};
+        if (toEditableText(draftRow.displayUsername) !== toEditableText(currentRow.displayUsername)) {
+          changedFields.displayName = toEditableText(draftRow.displayUsername);
         }
-        if (toEditableText(draftRow.customId) !== toEditableText(currentRow.customId)) {
-          changedFields.customId = toEditableText(draftRow.customId);
-        }
-        if (toEditableText(draftRow.externalEmail) !== toEditableText(currentRow.externalEmail)) {
-          changedFields.externalEmail = toEditableText(draftRow.externalEmail);
+        if (toEditableText(draftRow.username) !== toEditableText(currentRow.username)) {
+          changedFields.customId = toEditableText(draftRow.username);
         }
         if (toEditableText(draftRow.role) !== toEditableText(currentRow.role)) {
           changedFields.role = toEditableText(draftRow.role);
@@ -180,7 +158,7 @@ export default function MembersPage() {
           changedFields.status = toEditableText(draftRow.status);
         }
 
-        const response = await fetch(`${authOrigin}/admin/members/${draftRow.id}`, {
+        const response = await fetch(`${apiOrigin}/api/admin/users/${draftRow.id}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -248,34 +226,26 @@ export default function MembersPage() {
       ),
     },
     {
-      field: "displayName",
+      field: "displayUsername",
       headerName: "表示名",
       flex: 0.9,
       minWidth: 160,
       editable: true,
-      valueGetter: (_, row) => row.displayName || row.name || "-",
+      valueGetter: (_, row) => row.displayUsername || row.name || "-",
     },
     {
-      field: "customId",
+      field: "username",
       headerName: "カスタムID",
       flex: 0.8,
       minWidth: 150,
       editable: true,
-      valueGetter: (_, row) => row.customId || row.id,
+      valueGetter: (_, row) => row.username || row.id,
     },
     {
       field: "email",
       headerName: "メールアドレス",
       flex: 1.15,
       minWidth: 240,
-    },
-    {
-      field: "externalEmail",
-      headerName: "外部メールアドレス",
-      flex: 1.05,
-      minWidth: 240,
-      editable: true,
-      valueGetter: (_, row) => row.externalEmail || "-",
     },
     {
       field: "role",
@@ -296,8 +266,8 @@ export default function MembersPage() {
       valueOptions: [...memberStatusOptions],
       renderCell: (params) => (
         <Chip
-          label={statusLabel(String(params.value || "pending"))}
-          color={statusColor(String(params.value || "pending"))}
+          label={statusLabel(String(params.value || "active"))}
+          color={statusColor(String(params.value || "active"))}
           size="small"
           variant="outlined"
         />
@@ -308,15 +278,6 @@ export default function MembersPage() {
       headerName: "更新日時",
       flex: 0.9,
       minWidth: 180,
-      valueGetter: (_, row) => row.updatedAt || row.createdAt || "",
-      renderCell: (params) => formatDateTime(String(params.value || "")),
-    },
-    {
-      field: "joinedAt",
-      headerName: "参加日",
-      flex: 0.8,
-      minWidth: 160,
-      valueGetter: (_, row) => row.joinedAt || row.createdAt || "",
       renderCell: (params) => formatDateTime(String(params.value || "")),
     },
     {
@@ -324,7 +285,6 @@ export default function MembersPage() {
       headerName: "作成日時",
       flex: 0.9,
       minWidth: 180,
-      valueGetter: (_, row) => row.createdAt || "",
       renderCell: (params) => formatDateTime(String(params.value || "")),
     },
   ];
@@ -338,7 +298,7 @@ export default function MembersPage() {
       setLoading(true);
       setError("");
       const suffix = statusFilter === "all" ? "" : `?status=${statusFilter}`;
-      const response = await fetch(`${authOrigin}/admin/members${suffix}`, {
+      const response = await fetch(`${apiOrigin}/api/admin/users${suffix}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 
@@ -356,11 +316,11 @@ export default function MembersPage() {
     };
 
     void load();
-  }, [authOrigin, authToken, sessionLoading, statusFilter]);
+  }, [apiOrigin, authToken, sessionLoading, statusFilter]);
 
   return (
     <Stack spacing={3}>
-      <PageHeader title="Members" subtitle="Review and filter member accounts." />
+      <PageHeader title="メンバー管理" subtitle="登録済みメンバーの一覧表示・絞り込み・編集を行います。" />
 
       {error ? <Alert severity="warning">{error}</Alert> : null}
 
@@ -372,7 +332,7 @@ export default function MembersPage() {
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "center" }, flexWrap: "wrap" }}>
           <TextField
             select
-            label="Status filter"
+            label="ステータスで絞り込み"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
             sx={{ maxWidth: 220 }}
@@ -401,8 +361,6 @@ export default function MembersPage() {
         </Box>
       </Stack>
 
-      {/* Service status guide removed */}
-
       <DataGrid
         autoHeight
         rows={draftMembers}
@@ -418,12 +376,6 @@ export default function MembersPage() {
         initialState={{
           pagination: { paginationModel: { pageSize: 10, page: 0 } },
           sorting: { sortModel: [{ field: "updatedAt", sort: "desc" }] },
-          columns: {
-            columnVisibilityModel: {
-              joinedAt: false,
-              createdAt: false,
-            },
-          },
         }}
         sx={{
           ...dashboardGridSx,
@@ -442,7 +394,7 @@ export default function MembersPage() {
 
       {!loading && members.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No members found.
+          メンバーが見つかりません。
         </Typography>
       ) : null}
     </Stack>

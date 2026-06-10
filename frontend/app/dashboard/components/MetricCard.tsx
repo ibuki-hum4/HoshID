@@ -15,7 +15,7 @@ export default function MetricCard({ label, value, helper, icon }: MetricCardPro
       sx={{
         p: 3,
         borderRadius: 1,
-        border: "1px solid #d8dee5",
+        border: "1px solid #f6d7e6",
         background: "background.paper",
         display: "grid",
         gap: 1.5,

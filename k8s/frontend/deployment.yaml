@@ -20,6 +20,13 @@ spec:
       labels:
         app: frontend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -37,6 +44,12 @@ spec:
           image: hoshid/frontend:latest
           # イメージプルポリシーをAlwaysに設定（本番環境向け）
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 3000
               name: http
@@ -57,16 +70,106 @@ spec:
                 configMapKeyRef:
                   name: hoshid-config
                   key: NEXT_PUBLIC_APP_URL
-            - name: DATABASE_URL
+            - name: TZ
               valueFrom:
                 configMapKeyRef:
                   name: hoshid-config
+                  key: TZ
+            - name: OIDC_AUDIENCE
+              valueFrom:
+                configMapKeyRef:
+                  name: hoshid-config
+                  key: OIDC_AUDIENCE
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
                   key: DATABASE_URL
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: hoshid-secrets
                   key: BETTER_AUTH_SECRET
+            # OIDC JWT 署名鍵（必須。詳細は K8S_DEPLOYMENT.md を参照）
+            - name: OIDC_JWK_CURRENT
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: OIDC_JWK_CURRENT
+            # SMTP（メール確認・パスワードリセット送信用。すべて hoshid-secrets で管理）
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: SMTP_HOST
+                  optional: true
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: SMTP_PORT
+                  optional: true
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: SMTP_USER
+                  optional: true
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: SMTP_FROM
+                  optional: true
+            - name: SMTP_TLS_REJECT_UNAUTHORIZED
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: SMTP_TLS_REJECT_UNAUTHORIZED
+                  optional: true
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: SMTP_PASS
+                  optional: true
+            # 任意: Go API 等のOIDCブートストラップAPI・信頼済みクライアント連携
+            - name: OIDC_ADMIN_BOOTSTRAP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: OIDC_ADMIN_BOOTSTRAP_TOKEN
+                  optional: true
+            - name: OIDC_GO_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: hoshid-config
+                  key: OIDC_GO_CLIENT_ID
+                  optional: true
+            - name: OIDC_GO_REDIRECT_URLS
+              valueFrom:
+                configMapKeyRef:
+                  name: hoshid-config
+                  key: OIDC_GO_REDIRECT_URLS
+                  optional: true
+            - name: OIDC_GO_SKIP_CONSENT
+              valueFrom:
+                configMapKeyRef:
+                  name: hoshid-config
+                  key: OIDC_GO_SKIP_CONSENT
+                  optional: true
+            - name: OIDC_GO_CLIENT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: hoshid-config
+                  key: OIDC_GO_CLIENT_NAME
+                  optional: true
+            - name: OIDC_GO_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: OIDC_GO_CLIENT_SECRET
+                  optional: true
           resources:
             requests:
               memory: "512Mi"
@@ -90,5 +193,16 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 2
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
+      # readOnlyRootFilesystem 化に伴い、Next.js が書き込みを必要とするパスのみ書き込み可能にする
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}
       # サービスアカウント（RBAC）
       serviceAccountName: frontend-sa

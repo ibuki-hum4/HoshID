@@ -1,104 +1,187 @@
 # JWKS ローテーション & 監査ログ ランブック
 
-概要
-- 目的: 本番運用で JWKS のキー管理（ローテーション・公開・検証）を安全に、ゼロダウンタイムで実行する手順と、監査ログの取得方法を定義する。
-- 前提: `better-auth` と `@better-auth/oauth-provider` を利用し、アプリは JWKS を `/.well-known/jwks.json` などで公開する。
+## 概要
+- 目的: 本番運用で OIDC 署名鍵（JWKS）のローテーション・公開・検証を安全に、ゼロダウンタイムで実行する手順と、監査ログの確認方法を定義する。
+- 実装: `better-auth` の `jwt` プラグイン（`frontend/lib/auth.ts`）が
+  `OIDC_JWKS_PATH`（既定 `/api/auth/jwks`）で JWKS を公開する。鍵セットは
+  DBではなく環境変数から読み込まれる（`adapter.getJwks` =
+  `loadRotationKeysFromEnv()`、`frontend/src/features/oauth/security/jwks.ts`）。
 
 重要な設計方針
-- 常に複数の鍵を JWKS に含め、`kid` を使って検証側が古い鍵／新しい鍵を切り替えられること。
-- 秘密鍵の保管は K8s Secret / cloud KMS（例: AWS KMS/Secrets Manager, GCP KMS/Secret Manager）を推奨。
-- ローテーションは "準備 -> 公開（複数鍵）-> 移行期間 -> 廃棄" の流れで行う。
-- 監査ログは署名操作、管理 API 呼び出し（クライアント登録/更新/削除）、キー変更イベントを記録する。
+- 鍵は環境変数 `OIDC_JWK_CURRENT`（必須）/ `OIDC_JWK_PREVIOUS`（任意）で管理する。
+  両方が JWKS に `kid` 付きで公開され、検証側はどちらの `kid` で署名された
+  トークンも検証できる。
+- ローテーションは "新鍵を生成 -> 旧鍵を `OIDC_JWK_PREVIOUS` に退避 -> 新鍵を
+  `OIDC_JWK_CURRENT` に設定 -> ロールアウト -> 移行期間後に旧鍵を削除" の
+  流れで行う（DBマイグレーションや管理APIの呼び出しは不要）。
+- Secret の値はリポジトリのファイルに書き込まない。`kubectl create secret
+  generic` / `kubectl patch secret` でクラスタに直接投入する
+  （`K8S_DEPLOYMENT.md` 参照）。
 
-Prerequisites
-- Kubernetes クラスタ、`kubectl` 権限
-- KMS または安全なシークレットストア
-- 運用者用の管理トークン（`OIDC_ADMIN_BOOTSTRAP_TOKEN` など）を安全に管理
-- 本番用環境変数と ConfigMap/Secret の運用手順
+## 鍵のフォーマット
 
-運用手順（手動）
-1. 新しい鍵ペアを生成
-   - RSA 例: `openssl genpkey -algorithm RSA -out new.key -pkeyopt rsa_keygen_bits:3072` と `openssl rsa -pubout -in new.key -out new.pub`。
-   - EC (P-256): `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out new.key` など。
+`OIDC_JWK_CURRENT` / `OIDC_JWK_PREVIOUS` は、それぞれ次の形式の JSON を
+**1行**で設定する。`publicKey` / `privateKey` は jose の `exportJWK()` の
+戻り値を **JSON文字列化したもの**（二重エンコード）である点に注意:
 
-2. 秘密鍵を安全に保存
-   - K8s: `kubectl create secret generic oidc-jwk-new --from-file=privateKey=new.key --from-file=publicKey=new.pub -n <namespace>`
-   - Cloud KMS: 秘密鍵を KMS に登録し、公開用 JWK を構成管理に保存
-
-3. 公開 JWKS を更新（ゼロダウンタイム）
-   - 方式 A (推奨): 新しい鍵を DB / 設定に追加し、既存の公開 JWKS に `kid` と共に新鍵の公開部分を追加する。
-   - 方式 B: 新しい `OIDC_JWKS_JSON` を配置してアプリを再読み込み（ただし一時的な同期問題に注意）。
-
-4. 移行期間
-   - 新しい鍵で発行されたトークンと古い鍵で発行されたトークンが並存する期間を運用ポリシーで定義（例: トークン最大寿命 + 数分）。
-   - 移行期間中、検証サービスは JWKS に含まれる全 `kid` を受け付ける。
-
-5. 廃棄
-   - すべての既存トークンが期限切れになったことを確認後、古い鍵を JWKS から削除し、秘密鍵を安全に破棄する。
-
-自動化（Kubernetes 例）
-- CronJob/Job を使ったキー作成ワークフローの例（概念）:
-
-```yaml
-# k8s-job-create-jwk.yaml (概念)
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: oidc-jwk-rotate
-spec:
-  template:
-    spec:
-      containers:
-        - name: rotate
-          image: appropriate/curl
-          command: ["/bin/sh","-c"]
-          args:
-            - |
-              # 1) Generate key via KMS or in-container tool
-              # 2) Upload private to KMS / Secret Manager
-              # 3) POST new public JWK to admin endpoint (or update DB directly)
-              echo "rotate"
-      restartPolicy: Never
+```json
+{
+  "id": "2026-06-10-aaaaaaaa",
+  "publicKey": "{\"kty\":\"OKP\",\"crv\":\"Ed25519\",\"x\":\"...\"}",
+  "privateKey": "{\"kty\":\"OKP\",\"crv\":\"Ed25519\",\"d\":\"...\",\"x\":\"...\"}",
+  "alg": "EdDSA",
+  "crv": "Ed25519",
+  "createdAt": "2026-06-10T00:00:00.000Z",
+  "expiresAt": "2026-07-10T00:00:00.000Z"
+}
 ```
 
-- ベストプラクティス: 秘密鍵はコンテナ内で生成してはならない。必ず KMS を利用するか、信頼できるシークレット管理フローで配布する。
+- `id` は JWKS の `kid` として公開される一意な文字列。
+- `expiresAt` は任意。`loadRotationKeysFromEnv()` はこの値で自動失効はしない
+  ため、あくまで「いつ `OIDC_JWK_PREVIOUS` を削除してよいか」の運用上の目安。
+- `OIDC_JWKS_JSON` に上記オブジェクトの **配列** を設定すると、
+  `OIDC_JWK_CURRENT` / `OIDC_JWK_PREVIOUS` より優先して使われる
+  （3鍵以上を一括管理したい場合のみ使用）。
 
-監査ログ
-- 監査対象:
-  - 管理 API 呼び出し（クライアント作成/更新/削除、キー追加/削除）
-  - JWKS 公開の変更（誰がいつどのキーを追加/削除したか）
-  - トークン発行・更新・失効イベント（可能な限り）
-- ログ保管:
-  - 読み取り専用の監査ログストレージに転送（例: ELK, Splunk, Cloud Logging）
-  - ログは改竄不可能にする（WORM ストレージ / 署名）
-- ログの最小項目: タイムスタンプ, イベントタイプ, 実行者, 対象 (client_id or kid), 成功/失敗, 変更差分
+## Prerequisites
+- Kubernetes クラスタへの `kubectl` アクセス（`hoshid` namespace）
+- `frontend` の Node.js 実行環境（`node scripts/generate-oidc-jwk.mjs` の実行用）
+- 構造化監査ログ（後述）の閲覧権限
 
-検証手順
-- 新鍵追加後、次を実行して検証:
-  - `curl -s https://<issuer>/.well-known/jwks.json` で `kid` が存在することを確認
-  - 新しい鍵で ID/Access トークンを発行して、検証サービスが検証できることを確認
-
-緊急ロールバック
-- 古い鍵をすぐに再投下できるよう、廃棄前は古い鍵を安全にアーカイブしておく。
-- 誤ったキーが公開された場合は、即時にその `kid` を JWKS から削除し、必要に応じてクライアントを再発行。
-
-運用チェックリスト
-- [ ] KMS/Secret Manager に鍵が登録されている
-- [ ] JWKS に新しい `kid` が追加されている
-- [ ] 発行/検証テストを通過した
-- [ ] 監査ログにイベントが記録されている
-- [ ] 古い鍵の安全な保管（または破棄）を実施
-
-付録: ブートストラップ API の確認コマンド（ローカル）
+## 1. 新しい鍵ペアの生成
 
 ```bash
-# 前提: サーバが http://localhost:3000 で起動
+cd frontend
+node scripts/generate-oidc-jwk.mjs
+```
+
+`scripts/generate-oidc-jwk.mjs` は jose の
+`generateKeyPair("EdDSA", { crv: "Ed25519" })` で鍵ペアを生成し、上記フォーマットの
+JSONを1行で標準出力する（`id` は `randomUUID()`、`createdAt` は実行時刻）。
+
+## 2. 鍵をSecretへ反映
+
+通常運用（初回設定）では `OIDC_JWK_CURRENT` のみを設定する:
+
+```bash
+kubectl create secret generic hoshid-secrets -n hoshid \
+  --from-literal=OIDC_JWK_CURRENT="$(node scripts/generate-oidc-jwk.mjs)" \
+  ... # 他の必須キーは K8S_DEPLOYMENT.md を参照
+```
+
+既存の `hoshid-secrets` を更新する場合（`kubectl create` は既存Secretには
+使えない）は `kubectl patch` または `kubectl edit` を使う:
+
+```bash
+kubectl patch secret hoshid-secrets -n hoshid --type merge \
+  -p "{\"stringData\":{\"OIDC_JWK_CURRENT\": $(node scripts/generate-oidc-jwk.mjs | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')}}"
+```
+
+> `kubectl patch ... --type merge` で `stringData` に値を設定すると、
+> Kubernetes側で対応する `data` キーがbase64で更新される
+> （手元でbase64エンコードする必要はない）。
+
+## 3. ローテーション手順（ゼロダウンタイム）
+
+1. **現在の鍵を退避する**: 現在の `OIDC_JWK_CURRENT` の値を取得する。
+   ```bash
+   kubectl get secret hoshid-secrets -n hoshid \
+     -o jsonpath='{.data.OIDC_JWK_CURRENT}' | base64 -d
+   ```
+   必要であれば取得した値に `expiresAt`（旧鍵で発行したトークンの最大寿命 +
+   バッファ程度の未来日時）を追記しておくと、削除タイミングの目安になる。
+
+2. **退避した値を `OIDC_JWK_PREVIOUS` に設定する**（手順2と同じ
+   `kubectl patch` の要領で `OIDC_JWK_PREVIOUS` キーに設定）。
+
+3. **新しい鍵を生成し `OIDC_JWK_CURRENT` に設定する**:
+   ```bash
+   node scripts/generate-oidc-jwk.mjs
+   # 出力されたJSONを OIDC_JWK_CURRENT に kubectl patch で設定
+   ```
+
+4. **ロールアウト**:
+   ```bash
+   kubectl rollout restart deployment/frontend -n hoshid
+   kubectl rollout status deployment/frontend -n hoshid
+   ```
+
+5. **検証**: `/api/auth/jwks`（= `https://<issuer>/api/auth/jwks`）に
+   新旧両方の `kid` が含まれることを確認する（後述「検証手順」参照）。
+
+## 4. 移行期間と廃棄
+
+- 移行期間（旧鍵で発行されたトークンの最大寿命 + バッファ）は
+  `OIDC_JWK_PREVIOUS` を残し、JWKSに両方の `kid` を公開し続ける。
+- 移行期間が終了したら `OIDC_JWK_PREVIOUS` を削除する:
+  ```bash
+  kubectl patch secret hoshid-secrets -n hoshid --type=json \
+    -p='[{"op":"remove","path":"/data/OIDC_JWK_PREVIOUS"}]'
+  kubectl rollout restart deployment/frontend -n hoshid
+  ```
+
+## 監査ログ
+
+`frontend/lib/audit.ts` の `auditLog()` が、1イベント1行のJSON
+（`{ ts, service, env, event, details }`）を `stdout`（コンテナログ）に出力する。
+`secret` / `token` / `password` / `private` / `key` / `jwks` を含むキーの値は
+自動的にマスクされる。ログ収集基盤（Cloud Logging / ELK / Loki 等）で
+`service: "frontend"` のJSONログとして取り込み、`event` でフィルタする。
+
+- 監査対象イベント（実装済み）:
+  - `jwks.parse_error` / `jwks.parse_failure` / `jwks.skip_malformed_entry`:
+    `OIDC_JWK_CURRENT` / `OIDC_JWK_PREVIOUS` / `OIDC_JWKS_JSON` のJSONが
+    壊れている場合に出力される（鍵設定ミスの早期検知に使う）。
+  - `admin.bootstrap.*`: `/api/admin/oauth/clients/go`
+    （`OIDC_ADMIN_BOOTSTRAP_TOKEN` を使う管理API）の呼び出し結果。
+  - `admin.make-admin.*`: 初回セットアップ時の管理者ロール付与。
+- ローテーション作業自体（`kubectl patch` 等）は Kubernetes の監査ログ
+  （API server audit log）側に記録される。クラスタの audit policy で
+  `secrets` リソースへの `patch`/`update` が記録対象になっていることを
+  確認すること。
+
+## 検証手順
+
+ローテーション後、以下を確認する:
+
+```bash
+# 1. JWKS に新旧両方の kid が含まれること
+curl -s https://<issuer>/api/auth/jwks | jq '.keys[].kid'
+
+# 2. 新しい鍵で発行されたID/アクセストークンを、
+#    JWKS経由で外部クライアント（Go API等）が検証できること
+```
+
+```bash
+# 参考: ブートストラップAPIの動作確認（ローカル, OIDC_ADMIN_BOOTSTRAP_TOKEN設定時）
 curl -X POST http://localhost:3000/api/admin/oauth/clients/go \
   -H "Content-Type: application/json" \
   -H "x-admin-bootstrap-token: ${OIDC_ADMIN_BOOTSTRAP_TOKEN}" \
   -d '{"redirectUris":["http://localhost:8080/callback"]}'
 ```
 
+## 緊急ロールバック
+
+- ロールアウト後に問題が発生した場合、`OIDC_JWK_CURRENT` と
+  `OIDC_JWK_PREVIOUS` の値を入れ替えて（手順2と同じ `kubectl patch`）から
+  `kubectl rollout restart deployment/frontend -n hoshid` する。
+  旧鍵はまだ `OIDC_JWK_PREVIOUS` として削除していない前提。
+- 誤った値を `OIDC_JWK_CURRENT` に設定してしまい、かつ `OIDC_JWK_PREVIOUS`
+  も上書き済みの場合は、`node scripts/generate-oidc-jwk.mjs` で新規鍵を
+  再生成し、`OIDC_JWK_CURRENT` に設定し直す（旧鍵で発行済みのトークンは
+  検証不能になるため、影響範囲をユーザーに周知する）。
+
+## 運用チェックリスト
+
+- [ ] 新しい鍵を `node scripts/generate-oidc-jwk.mjs` で生成した
+- [ ] 現在の `OIDC_JWK_CURRENT` を `OIDC_JWK_PREVIOUS` に退避した
+- [ ] 新しい鍵を `OIDC_JWK_CURRENT` に設定した（ファイルに書き込まず
+      `kubectl patch secret` で直接投入した）
+- [ ] `kubectl rollout restart deployment/frontend -n hoshid` を実行した
+- [ ] `/api/auth/jwks` に新旧両方の `kid` が含まれることを確認した
+- [ ] 移行期間後に `OIDC_JWK_PREVIOUS` を削除した
+- [ ] 監査ログ（`jwks.*` イベント）にエラーが出ていないことを確認した
 
 ---
-注: このファイルは運用のための作業指示テンプレートです。実際の環境では KMS の種類や組織ポリシーに合わせて手順をカスタマイズしてください。
+注: このファイルは運用のための作業手順テンプレートです。クラスタ構成や
+組織のシークレット管理ポリシーに合わせて適宜調整してください。

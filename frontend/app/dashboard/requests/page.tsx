@@ -31,6 +31,7 @@ type MemberRequest = {
   status?: string;
   applicantEmail: string;
   applicantName?: string;
+  requestedUsername?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -45,6 +46,7 @@ export default function RequestsPage() {
   const [loading, setLoading] = useState(true);
   const [approveTarget, setApproveTarget] = useState<MemberRequest | null>(null);
   const [approveEmail, setApproveEmail] = useState("");
+  const [approveUsername, setApproveUsername] = useState("");
   const [approvePassword, setApprovePassword] = useState("");
   const [approveConfirm, setApproveConfirm] = useState("");
   const [approveError, setApproveError] = useState("");
@@ -103,6 +105,7 @@ export default function RequestsPage() {
   const openApproveDialog = (request: MemberRequest) => {
     setApproveTarget(request);
     setApproveEmail(request.applicantEmail);
+    setApproveUsername(request.requestedUsername || "");
     setApprovePassword("");
     setApproveConfirm("");
     setApproveError("");
@@ -111,6 +114,7 @@ export default function RequestsPage() {
   const closeApproveDialog = () => {
     setApproveTarget(null);
     setApproveEmail("");
+    setApproveUsername("");
     setApprovePassword("");
     setApproveConfirm("");
     setApproveError("");
@@ -145,7 +149,11 @@ export default function RequestsPage() {
           Authorization: `Bearer ${authToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: approveEmail, password: approvePassword }),
+        body: JSON.stringify({
+          email: approveEmail,
+          username: approveUsername.trim() || undefined,
+          password: approvePassword,
+        }),
       },
     );
 
@@ -173,6 +181,13 @@ export default function RequestsPage() {
       flex: 0.8,
       minWidth: 160,
       valueGetter: (_, row) => row.applicantName || "-",
+    },
+    {
+      field: "requestedUsername",
+      headerName: "Requested Custom ID",
+      flex: 0.8,
+      minWidth: 180,
+      valueGetter: (_, row) => row.requestedUsername || "-",
     },
     {
       field: "status",
@@ -269,6 +284,13 @@ export default function RequestsPage() {
               onChange={(event) => setApproveEmail(event.target.value)}
               fullWidth
               required
+            />
+            <TextField
+              label="カスタムID（任意）"
+              value={approveUsername}
+              onChange={(event) => setApproveUsername(event.target.value)}
+              fullWidth
+              helperText="3〜30文字の半角英数字、._ のみ使用できます。空欄の場合は未設定のまま承認されます。"
             />
             <TextField
               label="初期パスワード"

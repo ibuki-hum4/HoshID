@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { Box, Typography, CircularProgress, Stack } from "@mui/material";
+import { useEffect } from "react";
 
 export default function SetupCompletePage() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function SetupCompletePage() {
         justifyContent: "center",
       }}
     >
-      <Stack spacing={3} alignItems="center">
+      <Stack spacing={3} sx={{ alignItems: "center" }}>
         <CircularProgress />
         <Typography variant="h5">セットアップが完了しました</Typography>
         <Typography variant="body2" color="text.secondary">

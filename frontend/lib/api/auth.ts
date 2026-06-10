@@ -1,9 +1,10 @@
 import "server-only";
 
 import type { User } from "@prisma/client";
-import { SignJWT } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 
-export interface AuthUser extends Pick<User, "id" | "email" | "role" | "status"> {}
+export interface AuthUser
+  extends Pick<User, "id" | "email" | "role" | "status"> {}
 
 interface DashboardTokenPayload {
   id: string;
@@ -11,6 +12,17 @@ interface DashboardTokenPayload {
   role: string;
   status: string;
   [key: string]: unknown;
+}
+
+const DASHBOARD_TOKEN_ISSUER = "hoshid-dashboard";
+const DASHBOARD_TOKEN_AUDIENCE = "hoshid-dashboard";
+
+function getDashboardTokenSecret(): Uint8Array {
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error("BETTER_AUTH_SECRET is not set");
+  }
+  return new TextEncoder().encode(secret);
 }
 
 export async function getUserFromRequest(
@@ -24,21 +36,28 @@ export async function getUserFromRequest(
   const token = authHeader.slice(7);
 
   try {
-    // Verify JWT token using jose or similar
-    // For now, this is a placeholder that should be implemented
-    // with actual JWT verification from better-auth
-    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
-    const userId = payload.sub ?? payload.id;
-    if (!userId || !payload.email) {
+    const { payload } = await jwtVerify(token, getDashboardTokenSecret(), {
+      algorithms: ["HS256"],
+      issuer: DASHBOARD_TOKEN_ISSUER,
+      audience: DASHBOARD_TOKEN_AUDIENCE,
+    });
+
+    const userId = typeof payload.sub === "string" ? payload.sub : null;
+    if (!userId || typeof payload.email !== "string") {
       return null;
     }
 
-    // Fetch user from database
+    // Re-fetch the user so role/status reflect the current database state,
+    // not whatever was embedded in the token at issuance time.
     const { prisma } = await import("@/lib/prisma");
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true, role: true, status: true },
     });
+
+    if (!user || user.email !== payload.email) {
+      return null;
+    }
 
     return user;
   } catch {
@@ -56,16 +75,14 @@ export function requireAdmin(user: AuthUser): string | null {
 export async function issueDashboardToken(
   payload: DashboardTokenPayload,
 ): Promise<string> {
-  const secret = new TextEncoder().encode(
-    process.env.BETTER_AUTH_SECRET || "dev-secret",
-  );
-
-  const token = await new SignJWT(payload as any)
+  const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.id)
+    .setIssuer(DASHBOARD_TOKEN_ISSUER)
+    .setAudience(DASHBOARD_TOKEN_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime("24h")
-    .sign(secret);
+    .sign(getDashboardTokenSecret());
 
   return token;
 }

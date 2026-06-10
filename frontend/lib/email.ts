@@ -6,7 +6,7 @@ function getTransporter() {
   if (!transporter) {
     const smtpConfig = {
       host: process.env.SMTP_HOST || "localhost",
-      port: parseInt(process.env.SMTP_PORT || "1025"),
+      port: parseInt(process.env.SMTP_PORT || "1025", 10),
       auth: process.env.SMTP_USER
         ? {
             user: process.env.SMTP_USER,
@@ -15,15 +15,12 @@ function getTransporter() {
         : undefined,
       secure: process.env.SMTP_PORT === "465",
       tls: {
-        rejectUnauthorized: false,
+        // Default to verifying the server certificate. Only disable for local
+        // development against a mail catcher with a self-signed certificate.
+        rejectUnauthorized:
+          process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== "false",
       },
     };
-
-    console.log("[Email] SMTP Config:", {
-      host: smtpConfig.host,
-      port: smtpConfig.port,
-      user: smtpConfig.auth?.user ? "***" : "none",
-    });
 
     transporter = nodemailer.createTransport(smtpConfig);
   }
@@ -35,8 +32,7 @@ export async function sendVerificationEmail(email: string, url: string) {
   const fromEmail = process.env.SMTP_FROM || "noreply@hoshid.local";
 
   try {
-    console.log(`[Email] Sending verification email to ${email}`);
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: fromEmail,
       to: email,
       subject: "HoshID - メールアドレス確認",
@@ -48,13 +44,8 @@ export async function sendVerificationEmail(email: string, url: string) {
       `,
       text: `メールアドレス確認: ${url}`,
     });
-
-    console.log(`[Email] ✓ Verification email sent to ${email}`, {
-      messageId: info.messageId,
-      response: info.response,
-    });
   } catch (error) {
-    console.error(`[Email] ✗ Failed to send verification email to ${email}:`, error);
+    console.error(`[Email] Failed to send verification email to ${email}:`, error);
     throw error;
   }
 }
@@ -64,8 +55,7 @@ export async function sendPasswordResetEmail(email: string, url: string) {
   const fromEmail = process.env.SMTP_FROM || "noreply@hoshid.local";
 
   try {
-    console.log(`[Email] Sending password reset email to ${email}`);
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: fromEmail,
       to: email,
       subject: "HoshID - パスワードリセット",
@@ -77,13 +67,8 @@ export async function sendPasswordResetEmail(email: string, url: string) {
       `,
       text: `パスワードリセット: ${url}`,
     });
-
-    console.log(`[Email] ✓ Password reset email sent to ${email}`, {
-      messageId: info.messageId,
-      response: info.response,
-    });
   } catch (error) {
-    console.error(`[Email] ✗ Failed to send password reset email to ${email}:`, error);
+    console.error(`[Email] Failed to send password reset email to ${email}:`, error);
     throw error;
   }
 }
@@ -97,8 +82,7 @@ export async function sendApprovalCredentialsEmail(
   const fromEmail = process.env.SMTP_FROM || "noreply@hoshid.local";
 
   try {
-    console.log(`[Email] Sending approval credentials to ${recipientEmail}`);
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: fromEmail,
       to: recipientEmail,
       subject: "HoshID - アカウント承認のお知らせ",
@@ -111,13 +95,8 @@ export async function sendApprovalCredentialsEmail(
       `,
       text: `アカウント承認のお知らせ\nログインメールアドレス: ${loginEmail}\n初期パスワード: ${password}\nログイン後にパスワードを変更してください。`,
     });
-
-    console.log(`[Email] ✓ Approval credentials sent to ${recipientEmail}`, {
-      messageId: info.messageId,
-      response: info.response,
-    });
   } catch (error) {
-    console.error(`[Email] ✗ Failed to send approval credentials to ${recipientEmail}:`, error);
+    console.error(`[Email] Failed to send approval credentials to ${recipientEmail}:`, error);
     throw error;
   }
 }

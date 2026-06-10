@@ -1,99 +1,104 @@
-import { Box, Link, Paper, Stack, Typography } from "@mui/material";
-import PageHeader from "../../components/PageHeader";
-import { DEFAULT_AUTH_ORIGIN } from "../../lib/http";
+"use client";
 
-type Params = { params: Promise<{ id: string }> };
-type PublicUser = {
-  customId?: string;
-  nickname?: string;
-  email?: string;
-  websiteUrl?: string;
-  githubUrl?: string;
-  xUrl?: string;
-  instagramUrl?: string;
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { Alert, Chip, Paper, Stack, Typography } from "@mui/material";
+
+import PageHeader from "../../components/PageHeader";
+import { useDashboardAuth } from "../../components/DashboardAuthProvider";
+import { DEFAULT_API_ORIGIN, formatDateTime, readErrorMessage } from "../../lib/http";
+import { useStoredState } from "../../lib/storage";
+
+type Member = {
+  id: string;
+  name: string;
+  email: string;
+  username: string | null;
+  displayUsername: string | null;
+  emailVerified: boolean;
+  role: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
-export default async function PublicProfilePage({ params }: Params) {
-  const { id } = await params;
+export default function MemberProfilePage() {
+  const params = useParams();
+  const id = typeof params?.id === "string" ? params.id : "";
+  const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
+  const { authToken, loading: sessionLoading } = useDashboardAuth();
+  const [member, setMember] = useState<Member | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  let user: PublicUser | null = null;
+  useEffect(() => {
+    const load = async () => {
+      if (sessionLoading || !authToken || !id) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError("");
 
-  try {
-    const res = await fetch(`${DEFAULT_AUTH_ORIGIN}/public/users/${id}`, {
-      // cache for a short time
-      next: { revalidate: 60 },
-    });
+      const response = await fetch(
+        `${apiOrigin}/api/admin/users/${encodeURIComponent(id)}`,
+        { headers: { Authorization: `Bearer ${authToken}` } },
+      );
 
-    if (res.ok) {
-      user = (await res.json()) as PublicUser;
-    }
-  } catch (_e) {
-    // ignore and render not found / error state
-  }
+      if (!response.ok) {
+        setError(await readErrorMessage(response));
+        setMember(null);
+        setLoading(false);
+        return;
+      }
 
-  if (!user) {
-    return (
-      <Stack spacing={3}>
-        <PageHeader title="Profile" subtitle="公開プロフィール" />
+      const payload = (await response.json()) as Member;
+      setMember(payload);
+      setLoading(false);
+    };
 
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
-          <Typography>プロフィールが見つかりませんでした。</Typography>
-        </Paper>
-      </Stack>
-    );
-  }
-
-  const { customId, nickname, email, websiteUrl, githubUrl, xUrl, instagramUrl } = user;
+    void load();
+  }, [apiOrigin, authToken, id, sessionLoading]);
 
   return (
     <Stack spacing={3}>
-      <PageHeader title="Profile" subtitle="公開プロフィール" />
+      <PageHeader title="メンバー詳細" subtitle="メンバーのアカウント情報を表示します。" />
 
-      <Paper elevation={0} sx={{ p: 3, borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
-        <Stack spacing={2}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            {customId || nickname || email || "Unnamed"}
-          </Typography>
+      {error ? <Alert severity="warning">{error}</Alert> : null}
 
-          {email ? (
-            <Typography color="text.secondary">Mail: {email}</Typography>
-          ) : null}
+      {!loading && !member ? (
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
+          <Typography>メンバーが見つかりませんでした。</Typography>
+        </Paper>
+      ) : null}
 
-          <Box>
-            {websiteUrl ? (
-              <div>
-                <Link href={websiteUrl} target="_blank" rel="noopener noreferrer">
-                  Link: {websiteUrl}
-                </Link>
-              </div>
-            ) : null}
+      {member ? (
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
+          <Stack spacing={2}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {member.displayUsername || member.name}
+            </Typography>
 
-            {githubUrl ? (
-              <div>
-                <Link href={githubUrl} target="_blank" rel="noopener noreferrer">
-                  Github: {githubUrl}
-                </Link>
-              </div>
-            ) : null}
+            <Stack direction="row" spacing={1}>
+              <Chip label={`権限: ${member.role}`} size="small" variant="outlined" />
+              <Chip label={`ステータス: ${member.status}`} size="small" variant="outlined" />
+              <Chip
+                label={member.emailVerified ? "メール確認済み" : "メール未確認"}
+                size="small"
+                variant="outlined"
+                color={member.emailVerified ? "success" : "default"}
+              />
+            </Stack>
 
-            {xUrl ? (
-              <div>
-                <Link href={xUrl} target="_blank" rel="noopener noreferrer">
-                  X: {xUrl}
-                </Link>
-              </div>
-            ) : null}
-
-            {instagramUrl ? (
-              <div>
-                <Link href={instagramUrl} target="_blank" rel="noopener noreferrer">
-                  Instagram: {instagramUrl}
-                </Link>
-              </div>
-            ) : null}
-          </Box>
-        </Stack>
-      </Paper>
+            <Stack spacing={0.5}>
+              <Typography color="text.secondary">メールアドレス: {member.email}</Typography>
+              <Typography color="text.secondary">カスタムID: {member.username || member.id}</Typography>
+              <Typography color="text.secondary">作成日時: {formatDateTime(member.createdAt)}</Typography>
+              <Typography color="text.secondary">更新日時: {formatDateTime(member.updatedAt)}</Typography>
+            </Stack>
+          </Stack>
+        </Paper>
+      ) : null}
     </Stack>
   );
 }

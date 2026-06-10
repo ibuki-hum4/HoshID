@@ -1,35 +1,88 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Alert, Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { useSearchParams } from "next/navigation";
-import { Box, Typography, Alert, CircularProgress, Stack } from "@mui/material";
+import { Suspense, useEffect, useState } from "react";
+
+import { authClient } from "@/lib/auth-client";
+
+const errorMessages: Record<string, string> = {
+  TOKEN_EXPIRED: "確認リンクの有効期限が切れています。再度確認メールを送信してください。",
+  INVALID_TOKEN: "確認リンクが無効です。再度確認メールを送信してください。",
+  USER_NOT_FOUND: "対象のアカウントが見つかりませんでした。",
+};
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <Box
+          sx={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const email = searchParams.get("email");
+  const errorCode = searchParams.get("error");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const [redirectTo, setRedirectTo] = useState("");
 
   useEffect(() => {
-    if (!email) {
-      setStatus("error");
-      setMessage("メールアドレスが指定されていません。");
+    let active = true;
+
+    const evaluate = async () => {
+      if (errorCode) {
+        if (!active) return;
+        setStatus("error");
+        setMessage(errorMessages[errorCode] ?? "メールアドレスの確認に失敗しました。");
+        return;
+      }
+
+      const session = await authClient.getSession();
+      if (!active) return;
+
+      if (session.data?.user?.emailVerified) {
+        setStatus("success");
+        setMessage("メールアドレスが確認されました。");
+        setRedirectTo("/dashboard");
+      } else {
+        setStatus("success");
+        setMessage("メールアドレスの確認が完了しました。サインインしてご利用ください。");
+        setRedirectTo("/sign-in");
+      }
+    };
+
+    void evaluate();
+
+    return () => {
+      active = false;
+    };
+  }, [errorCode]);
+
+  useEffect(() => {
+    if (status !== "success" || !redirectTo) {
       return;
     }
 
-    // メール確認完了
-    // Better Auth が自動的に処理するか、
-    // DB で emailVerified を更新
-    setStatus("success");
-    setMessage(`${email} のメールアドレスが確認されました。`);
-
-    // 3秒後にダッシュボードにリダイレクト
     const timer = setTimeout(() => {
-      window.location.href = "/dashboard";
+      window.location.href = redirectTo;
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [email]);
+  }, [status, redirectTo]);
 
   return (
     <Box
@@ -52,17 +105,13 @@ export default function VerifyEmailPage() {
           </Box>
         )}
 
-        {status === "success" && (
-          <Alert severity="success">{message}</Alert>
-        )}
+        {status === "success" && <Alert severity="success">{message}</Alert>}
 
-        {status === "error" && (
-          <Alert severity="error">{message}</Alert>
-        )}
+        {status === "error" && <Alert severity="error">{message}</Alert>}
 
         <Typography variant="body2" color="text.secondary" align="center">
           {status === "loading" && "確認中..."}
-          {status === "success" && "ダッシュボードにリダイレクトします"}
+          {status === "success" && "まもなくページを移動します"}
           {status === "error" && ""}
         </Typography>
       </Stack>

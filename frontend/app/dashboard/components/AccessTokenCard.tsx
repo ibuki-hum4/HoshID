@@ -62,10 +62,10 @@ export default function AccessTokenCard() {
       <Stack spacing={2}>
         <Box>
           <Typography variant="subtitle2" color="text.secondary">
-            Access Token Example
+            連携アプリ用アクセストークン
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 700, mt: 1 }}>
-            Better Auth JWT / OAuth token
+            外部サービス連携で使用するトークンを取得します
           </Typography>
         </Box>
 
@@ -77,18 +77,18 @@ export default function AccessTokenCard() {
         />
 
         <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? "Loading..." : "Load access token"}
+          {loading ? "取得中..." : "トークンを取得"}
         </Button>
 
         {error ? <Alert severity="warning">{error}</Alert> : null}
 
         <TextField
-          label="Access Token"
+          label="アクセストークン"
           value={token}
           multiline
           minRows={4}
           slotProps={{ input: { readOnly: true } }}
-          placeholder="Token appears here"
+          placeholder="ここにトークンが表示されます"
         />
       </Stack>
     </Box>

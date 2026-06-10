@@ -50,7 +50,7 @@ type MemberRequest = {
 
 export default function DashboardOverviewPage() {
   const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
-  const { apiToken, authToken, isAdmin, loading: sessionLoading } = useDashboardAuth();
+  const { authToken, isAdmin, loading: sessionLoading } = useDashboardAuth();
 
   const [me, setMe] = useState<MeResponse | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -69,13 +69,13 @@ export default function DashboardOverviewPage() {
       setAuthError("");
 
       try {
-        if (!sessionLoading && apiToken) {
+        if (!sessionLoading && authToken) {
           const [meRes, annRes] = await Promise.all([
             fetch(`${apiOrigin}/api/protected/me`, {
-              headers: { Authorization: `Bearer ${apiToken}` },
+              headers: { Authorization: `Bearer ${authToken}` },
             }),
             fetch(`${apiOrigin}/api/protected/announcements`, {
-              headers: { Authorization: `Bearer ${apiToken}` },
+              headers: { Authorization: `Bearer ${authToken}` },
             }),
           ]);
 
@@ -141,7 +141,7 @@ export default function DashboardOverviewPage() {
     return () => {
       active = false;
     };
-  }, [apiOrigin, apiToken, authToken, isAdmin, sessionLoading]);
+  }, [apiOrigin, authToken, isAdmin, sessionLoading]);
 
   return (
     <Stack spacing={4}>

@@ -15,9 +15,6 @@ import {
 
 import AuthShell from "../components/auth/AuthShell";
 
-const authOrigin =
-  process.env.NEXT_PUBLIC_AUTH_SERVICE_ORIGIN ?? "http://localhost:3000";
-
 export default function SignUpPage() {
   return (
     <Suspense
@@ -48,13 +45,13 @@ function SignUpContent() {
 
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") ?? "").trim();
-    const customId = String(form.get("customId") ?? "").trim();
     const email = String(form.get("email") ?? "").trim();
-    const password = String(form.get("password") ?? "");
+    const username = String(form.get("username") ?? "").trim();
 
     const body: Record<string, string> = {
       name,
       email,
+      ...(username ? { username } : {}),
     };
 
     try {
@@ -112,6 +109,13 @@ function SignUpContent() {
             autoComplete="email"
             required
             fullWidth
+          />
+          <TextField
+            label="希望するカスタムID（任意）"
+            name="username"
+            autoComplete="off"
+            fullWidth
+            helperText="3〜30文字の半角英数字、._ のみ使用できます。空欄の場合は承認時に管理者が設定します。"
           />
           {signedUpEmail ? (
             <Box

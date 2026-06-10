@@ -49,7 +49,7 @@ function statusColor(status: string) {
 
 export default function AnnouncementsPage() {
   const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
-  const { apiToken, loading: sessionLoading } = useDashboardAuth();
+  const { authToken, loading: sessionLoading } = useDashboardAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminMode, setAdminMode] = useState(true);
@@ -84,7 +84,7 @@ export default function AnnouncementsPage() {
   ];
 
   const load = async () => {
-    if (sessionLoading || !apiToken) {
+    if (sessionLoading || !authToken) {
       setLoading(false);
       return;
     }
@@ -92,13 +92,13 @@ export default function AnnouncementsPage() {
     setError("");
 
     let response = await fetch(`${apiOrigin}/api/admin/announcements`, {
-      headers: { Authorization: `Bearer ${apiToken}` },
+      headers: { Authorization: `Bearer ${authToken}` },
     });
 
     if (!response.ok && response.status === 403) {
       setAdminMode(false);
       response = await fetch(`${apiOrigin}/api/protected/announcements`, {
-        headers: { Authorization: `Bearer ${apiToken}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
     }
 
@@ -115,10 +115,10 @@ export default function AnnouncementsPage() {
 
   useEffect(() => {
     void load();
-  }, [apiOrigin, apiToken, sessionLoading]);
+  }, [apiOrigin, authToken, sessionLoading]);
 
   const handleCreate = async () => {
-    if (sessionLoading || !apiToken) {
+    if (sessionLoading || !authToken) {
       return;
     }
     if (!title.trim()) {
@@ -131,7 +131,7 @@ export default function AnnouncementsPage() {
     const response = await fetch(`${apiOrigin}/api/admin/announcements`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiToken}`,
+        Authorization: `Bearer ${authToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ title: title.trim(), status }),
@@ -205,7 +205,7 @@ export default function AnnouncementsPage() {
           Recent announcements
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          こちらも DataGrid でソートとページネーションを使えます。
+          Sort and paginate to browse previously published announcements.
         </Typography>
         <DataGrid
           autoHeight

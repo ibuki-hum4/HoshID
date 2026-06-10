@@ -22,6 +22,7 @@ export function createPostgresRateLimiter(prisma: PrismaClient): RateLimiter {
 
       const [row] = await prisma.$queryRaw<RateLimitRow[]>`
         INSERT INTO "rate_limit_bucket" (
+          "id",
           "key",
           "windowStart",
           "count",
@@ -30,6 +31,7 @@ export function createPostgresRateLimiter(prisma: PrismaClient): RateLimiter {
           "updatedAt"
         )
         VALUES (
+          ${crypto.randomUUID()},
           ${key},
           ${windowStart},
           1,

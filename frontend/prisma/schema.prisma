@@ -41,11 +41,24 @@ model Announcement {
   @@map("announcement")
 }
 
+model Role {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  customId          String   @unique @map("custom_id")
+  description       String   @default("")
+  permissionBitmask Int      @default(0) @map("permission_bitmask")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("role")
+}
+
 model MemberRequest {
-  id             String   @id @default(uuid()) @db.Uuid
-  applicantEmail String
-  applicantName  String?
-  status         String   @default("pending")
+  id                String   @id @default(uuid()) @db.Uuid
+  applicantEmail    String
+  applicantName     String?
+  requestedUsername String?
+  status            String   @default("pending")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   decidedAt      DateTime?

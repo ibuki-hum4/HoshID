@@ -1,8 +1,8 @@
 import type { OAuthOptions, Scope } from "@better-auth/oauth-provider";
 
-import { OIDC_AUDIENCE, OIDC_CONSENT_PAGE, OIDC_DEFAULT_SCOPE, OIDC_JWKS_PATH, OIDC_LOGIN_PAGE, OIDC_ISSUER, OIDC_ALLOWED_SCOPES, type OidcScope } from "../config";
-import { assertAllowedScopes, buildUserInfoClaims } from "../security/scopes";
-import { shouldSkipConsent, type TrustedClient } from "../security/consent";
+import { OIDC_ALLOWED_SCOPES, OIDC_AUDIENCE, OIDC_CONSENT_PAGE, OIDC_DEFAULT_SCOPE, OIDC_LOGIN_PAGE } from "../config";
+import type { TrustedClient } from "../security/consent";
+import { buildUserInfoClaims } from "../security/scopes";
 
 export type OidcRuntimeConfig = {
   trustedClients: TrustedClient[];
@@ -28,9 +28,4 @@ export function createOidcOptions(runtime: OidcRuntimeConfig): OAuthOptions<Scop
       return buildUserInfoClaims(info.user, info.scopes as unknown as string[]);
     },
   };
-}
-
-export function decideConsent(clientId: string, scopes: string[], trustedClients: TrustedClient[]) {
-  const normalizedScopes = assertAllowedScopes(scopes);
-  return shouldSkipConsent({ clientId, scopes: normalizedScopes as OidcScope[], trustedClients });
 }

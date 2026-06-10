@@ -106,7 +106,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         minHeight: "100dvh",
         backgroundColor: "background.default",
         backgroundImage:
-          "linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0)), radial-gradient(circle at top right, rgba(15,118,110,0.05), transparent 26%)",
+          "linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0)), radial-gradient(circle at top right, rgba(236,72,153,0.06), transparent 26%)",
         overflowX: "hidden",
       }}
     >
@@ -248,12 +248,12 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                       borderRadius: 1,
                       border: "1px solid",
                       borderColor: active ? "primary.main" : "divider",
-                      bgcolor: active ? "rgba(15, 118, 110, 0.08)" : "transparent",
+                      bgcolor: active ? "rgba(236, 72, 153, 0.08)" : "transparent",
                       "&.Mui-selected": {
-                        bgcolor: "rgba(15, 118, 110, 0.08)",
+                        bgcolor: "rgba(236, 72, 153, 0.08)",
                       },
                       "&.Mui-selected:hover": {
-                        bgcolor: "rgba(15, 118, 110, 0.12)",
+                        bgcolor: "rgba(236, 72, 153, 0.12)",
                       },
                     }}
                   >

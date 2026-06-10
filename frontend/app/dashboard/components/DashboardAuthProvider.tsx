@@ -28,7 +28,6 @@ type DashboardAuthContextValue = {
   sessionUser: SessionUser | null;
   role: string;
   status: string;
-  apiToken: string;
   authToken: string;
   isAdmin: boolean;
 };
@@ -129,7 +128,6 @@ export function DashboardAuthProvider({ children }: DashboardAuthProviderProps) 
         sessionUser,
         role,
         status,
-        apiToken: dashboardToken,
         authToken: dashboardToken,
         isAdmin: role === "admin" && status === "active",
       }}

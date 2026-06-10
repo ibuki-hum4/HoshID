@@ -4,12 +4,12 @@ import "./globals.css";
 import Providers from "./providers";
 
 const inter = Inter({
-  variable: "--font-geist-sans",
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
 const notoSansJP = Noto_Sans_JP({
-  variable: "--font-geist-mono",
+  variable: "--font-noto-sans-jp",
   subsets: ["latin"],
 });
 

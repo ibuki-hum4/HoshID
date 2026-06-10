@@ -22,3 +22,7 @@ export function jsonForbidden(message: string): Response {
 export function jsonNotFound(message: string): Response {
   return Response.json({ error: message }, { status: 404 });
 }
+
+export function jsonConflict(message: string): Response {
+  return Response.json({ error: message }, { status: 409 });
+}

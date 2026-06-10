@@ -44,19 +44,13 @@ export function loadRotationKeysFromEnv(): Jwk[] {
   const bulk = process.env.OIDC_JWKS_JSON;
 
   if (bulk) {
-    console.debug("OIDC_JWKS_JSON present (truncated):", String(bulk).slice(0, 200));
-  } else {
-    console.debug("OIDC_JWKS_JSON not present");
-  }
-
-  if (bulk) {
     try {
       const parsed = JSON.parse(bulk) as JwkEnvValue[];
       const keys: Jwk[] = [];
       for (const entry of parsed) {
         try {
           keys.push(parseJwkEnvValue(JSON.stringify(entry)));
-        } catch (err) {
+        } catch (_err) {
           console.error('Skipping malformed JWK entry in OIDC_JWKS_JSON (truncated):', String(JSON.stringify(entry)).slice(0, 200));
           auditLog('jwks.skip_malformed_entry', { source: 'OIDC_JWKS_JSON', entry: String(JSON.stringify(entry)).slice(0, 200) });
         }
@@ -72,18 +66,6 @@ export function loadRotationKeysFromEnv(): Jwk[] {
   const keys: Jwk[] = [];
   const current = process.env.OIDC_JWK_CURRENT;
   const previous = process.env.OIDC_JWK_PREVIOUS;
-
-  if (current) {
-    console.debug("OIDC_JWK_CURRENT (truncated):", String(current).slice(0, 200));
-  } else {
-    console.debug("OIDC_JWK_CURRENT not present");
-  }
-
-  if (previous) {
-    console.debug("OIDC_JWK_PREVIOUS (truncated):", String(previous).slice(0, 200));
-  } else {
-    console.debug("OIDC_JWK_PREVIOUS not present");
-  }
 
   if (current) {
     try {
@@ -114,7 +96,7 @@ export function toPublicJwks(keys: readonly Jwk[]): JsonWebKeySet {
           ...JSON.parse(key.publicKey),
           kid: key.id,
         };
-      } catch (e) {
+      } catch (_e) {
         console.warn("Failed to parse publicKey as JSON for JWKS entry, falling back to minimal record", key.id);
         return {
           kid: key.id,
