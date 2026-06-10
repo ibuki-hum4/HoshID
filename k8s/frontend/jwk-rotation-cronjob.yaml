@@ -27,7 +27,7 @@ spec:
           serviceAccountName: oidc-jwk-rotator
           containers:
             - name: oidc-jwk-rotation
-              image: hoshid/frontend:jwk-rotator
+              image: docker.io/kemar1/hoshid-frontend:latest-jwk-rotator
               env:
                 - name: OIDC_JWK_ROTATION_NAMESPACE
                   value: hoshid

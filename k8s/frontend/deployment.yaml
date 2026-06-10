@@ -44,7 +44,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: frontend
-          image: hoshid/frontend:latest
+          image: docker.io/kemar1/hoshid-frontend:latest
           # イメージプルポリシーをAlwaysに設定（本番環境向け）
           imagePullPolicy: Always
           securityContext:

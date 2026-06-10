@@ -12,7 +12,7 @@ spec:
         - name: prisma-migrate
           # standalone ランタイムイメージには Prisma CLI が含まれないため、
           # Dockerfile の migrator ステージからビルドした専用イメージを使用する
-          image: hoshid/frontend:migrate
+          image: docker.io/kemar1/hoshid-frontend:latest-migrate
           env:
             - name: DATABASE_URL
               valueFrom:
