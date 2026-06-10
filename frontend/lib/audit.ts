@@ -4,7 +4,7 @@ function maskValue(v: unknown): unknown {
   if (v == null) return v;
   const s = String(v);
   if (s.length <= 8) return "****";
-  return s.slice(0, 4) + "..." + s.slice(-4);
+  return `${s.slice(0, 4)}...${s.slice(-4)}`;
 }
 
 function redact(obj: AuditDetails): AuditDetails {
@@ -37,7 +37,7 @@ export function auditLog(event: string, details: AuditDetails = {}) {
   // Structured JSON log (one line) for audit pipelines to ingest
   try {
     console.log(JSON.stringify(payload));
-  } catch (e) {
+  } catch (_e) {
     // fallback
     console.log({ ...payload, details: "<unserializable>" });
   }

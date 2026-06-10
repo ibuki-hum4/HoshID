@@ -1,8 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { useMemo, useState } from "react";
 
 type ConsentResponse = {
   redirectURI?: string;
@@ -32,10 +40,15 @@ export default function OidcAuthorizeClientPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accept, consent_code: consentCode || undefined }),
+        body: JSON.stringify({
+          accept,
+          consent_code: consentCode || undefined,
+        }),
       });
 
-      const payload = (await response.json().catch(() => null)) as ConsentResponse | null;
+      const payload = (await response
+        .json()
+        .catch(() => null)) as ConsentResponse | null;
 
       if (!response.ok) {
         throw new Error(payload?.error || "Consent request failed.");
@@ -48,15 +61,22 @@ export default function OidcAuthorizeClientPage() {
 
       router.replace("/");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Consent request failed.");
+      setError(
+        caught instanceof Error ? caught.message : "Consent request failed.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 3 }}>
-      <Paper sx={{ width: "min(720px, 100%)", p: 4, borderRadius: 3 }} elevation={0}>
+    <Box
+      sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 3 }}
+    >
+      <Paper
+        sx={{ width: "min(720px, 100%)", p: 4, borderRadius: 3 }}
+        elevation={0}
+      >
         <Stack spacing={3}>
           <Box>
             <Typography variant="overline" color="text.secondary">
@@ -70,7 +90,12 @@ export default function OidcAuthorizeClientPage() {
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{ flexWrap: "wrap" }}
+          >
             {scopes.map((item) => (
               <Chip key={item} label={item} />
             ))}
@@ -79,10 +104,18 @@ export default function OidcAuthorizeClientPage() {
           {error ? <Alert severity="warning">{error}</Alert> : null}
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <Button variant="outlined" onClick={() => submit(false)} disabled={loading}>
+            <Button
+              variant="outlined"
+              onClick={() => submit(false)}
+              disabled={loading}
+            >
               Deny
             </Button>
-            <Button variant="contained" onClick={() => submit(true)} disabled={loading}>
+            <Button
+              variant="contained"
+              onClick={() => submit(true)}
+              disabled={loading}
+            >
               {loading ? "Processing..." : "Allow"}
             </Button>
           </Stack>

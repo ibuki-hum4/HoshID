@@ -24,7 +24,8 @@ export default function ApplicationsPage() {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           The current API does not expose application or intake routes. Once the
-          backend is defined, this page can list submissions and decision status.
+          backend is defined, this page can list submissions and decision
+          status.
         </Typography>
       </Box>
     </Stack>

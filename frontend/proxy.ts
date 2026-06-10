@@ -13,7 +13,9 @@ type SessionResponse = {
   } | null;
 };
 
-async function readSession(request: NextRequest): Promise<SessionResponse | null> {
+async function readSession(
+  request: NextRequest,
+): Promise<SessionResponse | null> {
   const response = await fetch(new URL("/api/auth/get-session", request.url), {
     headers: {
       cookie: request.headers.get("cookie") ?? "",

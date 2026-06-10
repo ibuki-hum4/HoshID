@@ -14,7 +14,9 @@ export function loadTrustedClientsFromEnv(): TrustedClient[] {
   const json = process.env.OIDC_TRUSTED_CLIENTS_JSON;
 
   if (json) {
-    const parsed = z.array(trustedClientSchema).parse(JSON.parse(json) as unknown);
+    const parsed = z
+      .array(trustedClientSchema)
+      .parse(JSON.parse(json) as unknown);
     return parsed;
   }
 

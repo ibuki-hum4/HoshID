@@ -1,9 +1,9 @@
 "use client";
 
+import { Box, CircularProgress, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Box, CircularProgress, Typography } from "@mui/material";
 
 import { DEFAULT_AUTH_ORIGIN } from "../lib/http";
 import { useStoredState } from "../lib/storage";

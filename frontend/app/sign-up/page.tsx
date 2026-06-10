@@ -1,8 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
-import { useState } from "react";
-import NextLink from "next/link";
 import {
   Alert,
   Box,
@@ -12,6 +9,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import NextLink from "next/link";
+import { Suspense, useState } from "react";
 
 import AuthShell from "../components/auth/AuthShell";
 
@@ -19,7 +18,10 @@ export default function SignUpPage() {
   return (
     <Suspense
       fallback={
-        <AuthShell title="サインアップ" subtitle="新しい HoshID アカウントを作成します。">
+        <AuthShell
+          title="サインアップ"
+          subtitle="新しい HoshID アカウントを作成します。"
+        >
           <Typography variant="body2" color="text.secondary">
             Loading...
           </Typography>
@@ -65,22 +67,32 @@ function SignUpContent() {
 
       if (response.ok) {
         setSignedUpEmail(email);
-        setNotice("申請を受け付けました。承認後にログイン情報がメールで届きます。");
+        setNotice(
+          "申請を受け付けました。承認後にログイン情報がメールで届きます。",
+        );
         return;
       }
 
       if (!response.ok) {
         const contentType = response.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
-          const payload = (await response.json()) as { error?: string; message?: string };
-          throw new Error(payload.error || payload.message || "サインアップに失敗しました。");
+          const payload = (await response.json()) as {
+            error?: string;
+            message?: string;
+          };
+          throw new Error(
+            payload.error || payload.message || "サインアップに失敗しました。",
+          );
         }
         const text = await response.text();
         throw new Error(text || "サインアップに失敗しました。");
       }
-
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "サインアップに失敗しました。");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "サインアップに失敗しました。",
+      );
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { type FormEvent, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 
@@ -34,14 +41,20 @@ export default function AccessTokenCard() {
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(payload?.error || "Failed to load access token.");
       }
 
       const payload = (await response.json()) as AccessTokenResponse;
       setToken(payload.accessToken || payload.idToken || "");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Failed to load access token.");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Failed to load access token.",
+      );
     } finally {
       setLoading(false);
     }

@@ -32,13 +32,17 @@ type DashboardAuthContextValue = {
   isAdmin: boolean;
 };
 
-const DashboardAuthContext = createContext<DashboardAuthContextValue | null>(null);
+const DashboardAuthContext = createContext<DashboardAuthContextValue | null>(
+  null,
+);
 
 type DashboardAuthProviderProps = {
   children: ReactNode;
 };
 
-export function DashboardAuthProvider({ children }: DashboardAuthProviderProps) {
+export function DashboardAuthProvider({
+  children,
+}: DashboardAuthProviderProps) {
   const [authOrigin] = useStoredState("hoshid.authOrigin", DEFAULT_AUTH_ORIGIN);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [sessionRole, setSessionRole] = useState("");
@@ -59,9 +63,12 @@ export function DashboardAuthProvider({ children }: DashboardAuthProviderProps) 
       setDashboardToken("");
 
       try {
-        const sessionResponse = await fetch(`${authOrigin}/api/auth/get-session`, {
-          credentials: "include",
-        });
+        const sessionResponse = await fetch(
+          `${authOrigin}/api/auth/get-session`,
+          {
+            credentials: "include",
+          },
+        );
         if (!sessionResponse.ok) {
           if (active) {
             setLoading(false);
@@ -69,7 +76,9 @@ export function DashboardAuthProvider({ children }: DashboardAuthProviderProps) 
           return;
         }
 
-        const sessionPayload = (await sessionResponse.json()) as { user?: SessionUser };
+        const sessionPayload = (await sessionResponse.json()) as {
+          user?: SessionUser;
+        };
         const user = sessionPayload.user ?? null;
         if (!user?.id || !user.email) {
           if (active) {
@@ -78,9 +87,12 @@ export function DashboardAuthProvider({ children }: DashboardAuthProviderProps) 
           return;
         }
 
-        const tokenResponse = await fetch(`${authOrigin}/session/dashboard-token`, {
-          credentials: "include",
-        });
+        const tokenResponse = await fetch(
+          `${authOrigin}/session/dashboard-token`,
+          {
+            credentials: "include",
+          },
+        );
         if (!tokenResponse.ok) {
           throw new Error(await readErrorMessage(tokenResponse));
         }
@@ -104,7 +116,11 @@ export function DashboardAuthProvider({ children }: DashboardAuthProviderProps) 
         }
       } catch (caught) {
         if (active) {
-          setError(caught instanceof Error ? caught.message : "Failed to load dashboard session.");
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "Failed to load dashboard session.",
+          );
           setLoading(false);
         }
       }
@@ -140,7 +156,9 @@ export function DashboardAuthProvider({ children }: DashboardAuthProviderProps) 
 export function useDashboardAuth() {
   const context = useContext(DashboardAuthContext);
   if (!context) {
-    throw new Error("useDashboardAuth must be used within DashboardAuthProvider");
+    throw new Error(
+      "useDashboardAuth must be used within DashboardAuthProvider",
+    );
   }
   return context;
 }

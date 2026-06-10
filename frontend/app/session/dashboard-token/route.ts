@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth";
 import { issueDashboardToken } from "@/lib/api/auth";
 import { ensureApiUser } from "@/lib/api/db";
 import { jsonError, jsonOk, jsonUnauthorized } from "@/lib/api/responses";
+import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       role: apiUser.role,
       status: apiUser.status,
     });
-  } catch (err) {
+  } catch (_err) {
     return jsonError("failed to issue dashboard token", 500);
   }
 }

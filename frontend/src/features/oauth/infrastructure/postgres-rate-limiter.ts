@@ -9,13 +9,18 @@ type RateLimitRow = {
 };
 
 function windowStartFor(now: Date, windowSeconds: number): Date {
-  const windowStartMs = Math.floor(now.getTime() / (windowSeconds * 1000)) * windowSeconds * 1000;
+  const windowStartMs =
+    Math.floor(now.getTime() / (windowSeconds * 1000)) * windowSeconds * 1000;
   return new Date(windowStartMs);
 }
 
 export function createPostgresRateLimiter(prisma: PrismaClient): RateLimiter {
   return {
-    async consume(key: string, limit: number, windowSeconds: number): Promise<RateLimitDecision> {
+    async consume(
+      key: string,
+      limit: number,
+      windowSeconds: number,
+    ): Promise<RateLimitDecision> {
       const now = new Date();
       const windowStart = windowStartFor(now, windowSeconds);
       const resetAt = new Date(windowStart.getTime() + windowSeconds * 1000);

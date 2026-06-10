@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
   Alert,
   Box,
-  Chip,
   Button,
+  Chip,
   IconButton,
   MenuItem,
   Stack,
@@ -17,11 +15,17 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { DataGrid, GridToolbar, type GridColDef, type GridRowModel } from "@mui/x-data-grid";
-
-import PageHeader from "../components/PageHeader";
+import {
+  DataGrid,
+  type GridColDef,
+  type GridRowModel,
+  GridToolbar,
+} from "@mui/x-data-grid";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
+import PageHeader from "../components/PageHeader";
 import {
   DEFAULT_API_ORIGIN,
   formatDateTime,
@@ -87,7 +91,8 @@ function normalizeMemberRow(row: Member): Member {
 
 function areMemberRowsEqual(left: Member, right: Member) {
   return (
-    toEditableText(left.displayUsername) === toEditableText(right.displayUsername) &&
+    toEditableText(left.displayUsername) ===
+      toEditableText(right.displayUsername) &&
     toEditableText(left.username) === toEditableText(right.username) &&
     toEditableText(left.role) === toEditableText(right.role) &&
     toEditableText(left.status) === toEditableText(right.status)
@@ -105,18 +110,25 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [savingDraft, setSavingDraft] = useState(false);
 
-  const hasDraftChanges = draftMembers.length !== members.length
-    ? true
-    : draftMembers.some((row, index) => !areMemberRowsEqual(row, members[index]));
+  const hasDraftChanges =
+    draftMembers.length !== members.length
+      ? true
+      : draftMembers.some(
+          (row, index) => !areMemberRowsEqual(row, members[index]),
+        );
 
   const dirtyMemberIds = new Set(
-    draftMembers.filter((row, index) => !areMemberRowsEqual(row, members[index])).map((row) => row.id),
+    draftMembers
+      .filter((row, index) => !areMemberRowsEqual(row, members[index]))
+      .map((row) => row.id),
   );
 
   const handleProcessRowUpdate = (newRow: GridRowModel<Member>) => {
     const normalized = normalizeMemberRow(newRow);
 
-    setDraftMembers((current) => current.map((row) => (row.id === normalized.id ? normalized : row)));
+    setDraftMembers((current) =>
+      current.map((row) => (row.id === normalized.id ? normalized : row)),
+    );
 
     return normalized;
   };
@@ -145,27 +157,38 @@ export default function MembersPage() {
         }
 
         const changedFields: Record<string, string> = {};
-        if (toEditableText(draftRow.displayUsername) !== toEditableText(currentRow.displayUsername)) {
+        if (
+          toEditableText(draftRow.displayUsername) !==
+          toEditableText(currentRow.displayUsername)
+        ) {
           changedFields.displayName = toEditableText(draftRow.displayUsername);
         }
-        if (toEditableText(draftRow.username) !== toEditableText(currentRow.username)) {
+        if (
+          toEditableText(draftRow.username) !==
+          toEditableText(currentRow.username)
+        ) {
           changedFields.customId = toEditableText(draftRow.username);
         }
         if (toEditableText(draftRow.role) !== toEditableText(currentRow.role)) {
           changedFields.role = toEditableText(draftRow.role);
         }
-        if (toEditableText(draftRow.status) !== toEditableText(currentRow.status)) {
+        if (
+          toEditableText(draftRow.status) !== toEditableText(currentRow.status)
+        ) {
           changedFields.status = toEditableText(draftRow.status);
         }
 
-        const response = await fetch(`${apiOrigin}/api/admin/users/${draftRow.id}`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
+        const response = await fetch(
+          `${apiOrigin}/api/admin/users/${draftRow.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(changedFields),
           },
-          body: JSON.stringify(changedFields),
-        });
+        );
 
         if (!response.ok) {
           throw new Error(await readErrorMessage(response));
@@ -178,7 +201,9 @@ export default function MembersPage() {
       setMembers(nextMembers);
       setDraftMembers(nextMembers.map((row) => ({ ...row })));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存に失敗しました。");
+      setError(
+        caught instanceof Error ? caught.message : "保存に失敗しました。",
+      );
     } finally {
       setSavingDraft(false);
     }
@@ -197,7 +222,11 @@ export default function MembersPage() {
           <Tooltip title="詳細を表示">
             <IconButton
               size="small"
-              onClick={() => router.push(`/dashboard/profile/${encodeURIComponent(params.row.id)}`)}
+              onClick={() =>
+                router.push(
+                  `/dashboard/profile/${encodeURIComponent(params.row.id)}`,
+                )
+              }
               aria-label="詳細を表示"
             >
               <VisibilityOutlinedIcon fontSize="small" />
@@ -206,7 +235,9 @@ export default function MembersPage() {
           <Tooltip title="履歴を表示">
             <IconButton
               size="small"
-              onClick={() => setError(`履歴の表示はまだ未接続です: ${params.row.email}`)}
+              onClick={() =>
+                setError(`履歴の表示はまだ未接続です: ${params.row.email}`)
+              }
               aria-label="履歴を表示"
             >
               <HistoryOutlinedIcon fontSize="small" />
@@ -216,7 +247,9 @@ export default function MembersPage() {
             <IconButton
               size="small"
               color="error"
-              onClick={() => setError(`削除操作はまだ未接続です: ${params.row.email}`)}
+              onClick={() =>
+                setError(`削除操作はまだ未接続です: ${params.row.email}`)
+              }
               aria-label="削除"
             >
               <HighlightOffIcon fontSize="small" />
@@ -255,7 +288,13 @@ export default function MembersPage() {
       type: "singleSelect",
       valueOptions: [...memberRoleOptions],
       valueGetter: (_, row) => row.role || "user",
-      renderCell: (params) => <Chip label={String(params.value || "user")} size="small" variant="outlined" />,
+      renderCell: (params) => (
+        <Chip
+          label={String(params.value || "user")}
+          size="small"
+          variant="outlined"
+        />
+      ),
     },
     {
       field: "status",
@@ -320,7 +359,10 @@ export default function MembersPage() {
 
   return (
     <Stack spacing={3}>
-      <PageHeader title="メンバー管理" subtitle="登録済みメンバーの一覧表示・絞り込み・編集を行います。" />
+      <PageHeader
+        title="メンバー管理"
+        subtitle="登録済みメンバーの一覧表示・絞り込み・編集を行います。"
+      />
 
       {error ? <Alert severity="warning">{error}</Alert> : null}
 
@@ -329,7 +371,11 @@ export default function MembersPage() {
         spacing={2}
         sx={{ alignItems: { md: "center" }, justifyContent: "space-between" }}
       >
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "center" }, flexWrap: "wrap" }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          sx={{ alignItems: { sm: "center" }, flexWrap: "wrap" }}
+        >
           <TextField
             select
             label="ステータスで絞り込み"
@@ -350,12 +396,25 @@ export default function MembersPage() {
 
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Chip label={`合計 ${members.length} 件`} variant="outlined" />
-          <Chip label={statusFilter === "all" ? "全ステータス" : statusFilter} variant="outlined" />
-          {hasDraftChanges ? <Chip label="変更あり" color="warning" variant="outlined" /> : null}
-          <Button variant="outlined" onClick={handleRevertDraft} disabled={!hasDraftChanges || savingDraft}>
+          <Chip
+            label={statusFilter === "all" ? "全ステータス" : statusFilter}
+            variant="outlined"
+          />
+          {hasDraftChanges ? (
+            <Chip label="変更あり" color="warning" variant="outlined" />
+          ) : null}
+          <Button
+            variant="outlined"
+            onClick={handleRevertDraft}
+            disabled={!hasDraftChanges || savingDraft}
+          >
             変更をもとに戻す
           </Button>
-          <Button variant="contained" onClick={handleSaveDraft} disabled={!hasDraftChanges || savingDraft}>
+          <Button
+            variant="contained"
+            onClick={handleSaveDraft}
+            disabled={!hasDraftChanges || savingDraft}
+          >
             {savingDraft ? "保存中..." : "変更を保存"}
           </Button>
         </Box>
@@ -371,8 +430,14 @@ export default function MembersPage() {
         pageSizeOptions={[5, 10, 25]}
         slots={{ toolbar: GridToolbar }}
         processRowUpdate={handleProcessRowUpdate}
-        onProcessRowUpdateError={(caught) => setError(caught instanceof Error ? caught.message : "保存に失敗しました。")}
-        getRowClassName={(params) => (dirtyMemberIds.has(params.id as string) ? "member-draft-row" : "")}
+        onProcessRowUpdateError={(caught) =>
+          setError(
+            caught instanceof Error ? caught.message : "保存に失敗しました。",
+          )
+        }
+        getRowClassName={(params) =>
+          dirtyMemberIds.has(params.id as string) ? "member-draft-row" : ""
+        }
         initialState={{
           pagination: { paginationModel: { pageSize: 10, page: 0 } },
           sorting: { sortModel: [{ field: "updatedAt", sort: "desc" }] },

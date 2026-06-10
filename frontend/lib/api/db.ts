@@ -100,14 +100,17 @@ export async function createMemberRequest(
 
 export async function updateMemberRequest(
   id: string,
-  data: Partial<Pick<MemberRequest,
-    "status" |
-    "decidedAt" |
-    "decidedById" |
-    "userId" |
-    "applicantEmail" |
-    "applicantName"
-  >>,
+  data: Partial<
+    Pick<
+      MemberRequest,
+      | "status"
+      | "decidedAt"
+      | "decidedById"
+      | "userId"
+      | "applicantEmail"
+      | "applicantName"
+    >
+  >,
 ): Promise<MemberRequest | null> {
   try {
     return await prisma.memberRequest.update({

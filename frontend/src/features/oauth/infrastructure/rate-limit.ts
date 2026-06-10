@@ -6,5 +6,9 @@ export type RateLimitDecision = {
 };
 
 export interface RateLimiter {
-  consume(key: string, limit: number, windowSeconds: number): Promise<RateLimitDecision>;
+  consume(
+    key: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<RateLimitDecision>;
 }

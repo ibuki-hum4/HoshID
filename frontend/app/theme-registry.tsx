@@ -1,10 +1,10 @@
 "use client";
 
-import * as React from "react";
-import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
-import { useServerInsertedHTML } from "next/navigation";
+import { CacheProvider } from "@emotion/react";
 import { CssBaseline, ThemeProvider } from "@mui/material";
+import { useServerInsertedHTML } from "next/navigation";
+import * as React from "react";
 
 import theme from "./theme";
 
@@ -51,6 +51,7 @@ export default function ThemeRegistry({ children }: ThemeRegistryProps) {
     return (
       <style
         data-emotion={`${cache.key} ${names.join(" ")}`}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: required by Emotion SSR cache injection (MUI App Router setup)
         dangerouslySetInnerHTML={{ __html: styles }}
       />
     );

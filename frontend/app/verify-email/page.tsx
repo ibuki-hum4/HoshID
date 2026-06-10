@@ -7,7 +7,8 @@ import { Suspense, useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 const errorMessages: Record<string, string> = {
-  TOKEN_EXPIRED: "確認リンクの有効期限が切れています。再度確認メールを送信してください。",
+  TOKEN_EXPIRED:
+    "確認リンクの有効期限が切れています。再度確認メールを送信してください。",
   INVALID_TOKEN: "確認リンクが無効です。再度確認メールを送信してください。",
   USER_NOT_FOUND: "対象のアカウントが見つかりませんでした。",
 };
@@ -36,7 +37,9 @@ export default function VerifyEmailPage() {
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const errorCode = searchParams.get("error");
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    "loading",
+  );
   const [message, setMessage] = useState("");
   const [redirectTo, setRedirectTo] = useState("");
 
@@ -47,7 +50,9 @@ function VerifyEmailContent() {
       if (errorCode) {
         if (!active) return;
         setStatus("error");
-        setMessage(errorMessages[errorCode] ?? "メールアドレスの確認に失敗しました。");
+        setMessage(
+          errorMessages[errorCode] ?? "メールアドレスの確認に失敗しました。",
+        );
         return;
       }
 
@@ -60,7 +65,9 @@ function VerifyEmailContent() {
         setRedirectTo("/dashboard");
       } else {
         setStatus("success");
-        setMessage("メールアドレスの確認が完了しました。サインインしてご利用ください。");
+        setMessage(
+          "メールアドレスの確認が完了しました。サインインしてご利用ください。",
+        );
         setRedirectTo("/sign-in");
       }
     };

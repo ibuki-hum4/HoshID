@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import NextLink from "next/link";
 import {
   Alert,
   Box,
@@ -11,6 +9,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import NextLink from "next/link";
+import { useState } from "react";
 
 import AuthShell from "../components/auth/AuthShell";
 
@@ -36,7 +36,9 @@ export default function ResetPasswordView({ token }: ResetPasswordViewProps) {
     const confirm = String(form.get("passwordConfirm") ?? "");
 
     if (!token) {
-      setError("リセット用トークンが見つかりません。メールのリンクから開き直してください。");
+      setError(
+        "リセット用トークンが見つかりません。メールのリンクから開き直してください。",
+      );
       return;
     }
 
@@ -62,8 +64,15 @@ export default function ResetPasswordView({ token }: ResetPasswordViewProps) {
       if (!response.ok) {
         const contentType = response.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
-          const payload = (await response.json()) as { error?: string; message?: string };
-          throw new Error(payload.error || payload.message || "パスワードの更新に失敗しました。");
+          const payload = (await response.json()) as {
+            error?: string;
+            message?: string;
+          };
+          throw new Error(
+            payload.error ||
+              payload.message ||
+              "パスワードの更新に失敗しました。",
+          );
         }
         const text = await response.text();
         throw new Error(text || "パスワードの更新に失敗しました。");
@@ -72,14 +81,21 @@ export default function ResetPasswordView({ token }: ResetPasswordViewProps) {
       setNotice("パスワードを更新しました。サインイン画面へ移動します。");
       window.location.href = "/sign-in";
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "パスワードの更新に失敗しました。");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "パスワードの更新に失敗しました。",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthShell title="パスワードリセット" subtitle="新しいパスワードを設定します。">
+    <AuthShell
+      title="パスワードリセット"
+      subtitle="新しいパスワードを設定します。"
+    >
       <Box component="form" onSubmit={handleSubmit}>
         <Stack spacing={2}>
           {error ? <Alert severity="error">{error}</Alert> : null}

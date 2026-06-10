@@ -95,7 +95,10 @@ export async function POST(
           email: normalizedLoginEmail,
           name: memberRequest.applicantName || normalizedLoginEmail,
           ...(normalizedUsername
-            ? { username: normalizedUsername, displayUsername: normalizedUsername }
+            ? {
+                username: normalizedUsername,
+                displayUsername: normalizedUsername,
+              }
             : {}),
           role: "user",
           status: "active",
@@ -134,7 +137,11 @@ export async function POST(
   const { user: createdUser, request: updatedRequest } = result;
 
   try {
-    await sendApprovalCredentialsEmail(applicantEmail, normalizedLoginEmail, password);
+    await sendApprovalCredentialsEmail(
+      applicantEmail,
+      normalizedLoginEmail,
+      password,
+    );
   } catch (_error) {
     return jsonError("failed to send approval email", 500);
   }

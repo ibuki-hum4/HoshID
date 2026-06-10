@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import {
   Alert,
   Box,
@@ -12,14 +13,12 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import { type ChangeEvent, useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import { FaGithub, FaInstagram, FaLink, FaXTwitter } from "react-icons/fa6";
-
-import PageHeader from "../components/PageHeader";
 import AccessTokenCard from "../components/AccessTokenCard";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
+import PageHeader from "../components/PageHeader";
 import { DEFAULT_AUTH_ORIGIN, readErrorMessage } from "../lib/http";
 
 type ProfileFormState = {
@@ -89,7 +88,9 @@ const createSocialRow = (platform: SocialKey, value = ""): SocialRow => ({
 
 const buildInitialRows = (source: ProfileFormState): SocialRow[] => {
   const populated = socialOptions
-    .map((option) => createSocialRow(option.key, source[option.key]?.trim() ?? ""))
+    .map((option) =>
+      createSocialRow(option.key, source[option.key]?.trim() ?? ""),
+    )
     .filter((row) => row.value.length > 0);
 
   if (populated.length > 0) {
@@ -110,7 +111,9 @@ const emptyForm: ProfileFormState = {
 export default function ProfilePage() {
   const { sessionUser, loading: sessionLoading } = useDashboardAuth();
   const [form, setForm] = useState<ProfileFormState>(emptyForm);
-  const [socialRows, setSocialRows] = useState<SocialRow[]>([createSocialRow("githubUrl")]);
+  const [socialRows, setSocialRows] = useState<SocialRow[]>([
+    createSocialRow("githubUrl"),
+  ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -132,25 +135,32 @@ export default function ProfilePage() {
     setSocialRows(buildInitialRows(nextForm));
   }, [sessionUser]);
 
-  const updateField = (key: keyof ProfileFormState) => (event: ChangeEvent<HTMLInputElement>) => {
-    setForm((current) => ({ ...current, [key]: event.target.value }));
-  };
+  const updateField =
+    (key: keyof ProfileFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+      setForm((current) => ({ ...current, [key]: event.target.value }));
+    };
 
-  const updateSocialPlatform = (rowId: string) => (event: ChangeEvent<HTMLInputElement>) => {
-    const nextPlatform = event.target.value as SocialKey;
+  const updateSocialPlatform =
+    (rowId: string) => (event: ChangeEvent<HTMLInputElement>) => {
+      const nextPlatform = event.target.value as SocialKey;
 
-    setSocialRows((current) =>
-      current.map((row) => (row.id === rowId ? { ...row, platform: nextPlatform } : row)),
-    );
-  };
+      setSocialRows((current) =>
+        current.map((row) =>
+          row.id === rowId ? { ...row, platform: nextPlatform } : row,
+        ),
+      );
+    };
 
-  const updateSocialValue = (rowId: string) => (event: ChangeEvent<HTMLInputElement>) => {
-    const nextValue = event.target.value;
+  const updateSocialValue =
+    (rowId: string) => (event: ChangeEvent<HTMLInputElement>) => {
+      const nextValue = event.target.value;
 
-    setSocialRows((current) =>
-      current.map((row) => (row.id === rowId ? { ...row, value: nextValue } : row)),
-    );
-  };
+      setSocialRows((current) =>
+        current.map((row) =>
+          row.id === rowId ? { ...row, value: nextValue } : row,
+        ),
+      );
+    };
 
   const addSocialRow = () => {
     setSocialRows((current) => {
@@ -193,18 +203,21 @@ export default function ProfilePage() {
     }
 
     try {
-      const response = await fetch(`${DEFAULT_AUTH_ORIGIN}/api/auth/update-user`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nickname: form.nickname.trim(),
-          githubUrl: normalizedLinks.githubUrl,
-          xUrl: normalizedLinks.xUrl,
-          instagramUrl: normalizedLinks.instagramUrl,
-          websiteUrl: normalizedLinks.websiteUrl,
-        }),
-      });
+      const response = await fetch(
+        `${DEFAULT_AUTH_ORIGIN}/api/auth/update-user`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nickname: form.nickname.trim(),
+            githubUrl: normalizedLinks.githubUrl,
+            xUrl: normalizedLinks.xUrl,
+            instagramUrl: normalizedLinks.instagramUrl,
+            websiteUrl: normalizedLinks.websiteUrl,
+          }),
+        },
+      );
 
       if (!response.ok) {
         setError(await readErrorMessage(response));
@@ -213,7 +226,9 @@ export default function ProfilePage() {
 
       setNotice("プロフィールを保存しました。");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存に失敗しました。");
+      setError(
+        caught instanceof Error ? caught.message : "保存に失敗しました。",
+      );
     } finally {
       setSaving(false);
     }
@@ -265,7 +280,14 @@ export default function ProfilePage() {
             />
 
             <Stack spacing={1.25}>
-              <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                }}
+              >
                 <Typography variant="subtitle2" color="text.secondary">
                   SNS / Links
                 </Typography>

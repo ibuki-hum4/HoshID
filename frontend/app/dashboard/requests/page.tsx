@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Alert,
   Button,
@@ -15,10 +13,11 @@ import {
   Typography,
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-
-import PageHeader from "../components/PageHeader";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
+import PageHeader from "../components/PageHeader";
 import {
   DEFAULT_API_ORIGIN,
   formatDateTime,
@@ -44,14 +43,16 @@ export default function RequestsPage() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [approveTarget, setApproveTarget] = useState<MemberRequest | null>(null);
+  const [approveTarget, setApproveTarget] = useState<MemberRequest | null>(
+    null,
+  );
   const [approveEmail, setApproveEmail] = useState("");
   const [approveUsername, setApproveUsername] = useState("");
   const [approvePassword, setApprovePassword] = useState("");
   const [approveConfirm, setApproveConfirm] = useState("");
   const [approveError, setApproveError] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (sessionLoading || !isAdmin || !authToken) {
       return;
     }
@@ -70,7 +71,7 @@ export default function RequestsPage() {
     const payload = (await response.json()) as { requests: MemberRequest[] };
     setRequests(payload.requests ?? []);
     setLoading(false);
-  };
+  }, [apiOrigin, authToken, isAdmin, sessionLoading]);
 
   useEffect(() => {
     if (!sessionLoading && !isAdmin) {
@@ -78,7 +79,7 @@ export default function RequestsPage() {
       return;
     }
     void load();
-  }, [apiOrigin, authToken, isAdmin, router, sessionLoading]);
+  }, [isAdmin, router, sessionLoading, load]);
 
   const handleReject = async (id: string) => {
     if (sessionLoading || !isAdmin || !authToken) {
@@ -87,10 +88,13 @@ export default function RequestsPage() {
     setLoadingId(id);
     setError("");
 
-    const response = await fetch(`${apiOrigin}/api/admin/requests/${id}/reject`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
+    const response = await fetch(
+      `${apiOrigin}/api/admin/requests/${id}/reject`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+      },
+    );
 
     if (!response.ok) {
       setError(await readErrorMessage(response));
@@ -193,7 +197,9 @@ export default function RequestsPage() {
       field: "status",
       headerName: "Status",
       width: 150,
-      renderCell: () => <Chip label="pending" size="small" variant="outlined" color="warning" />,
+      renderCell: () => (
+        <Chip label="pending" size="small" variant="outlined" color="warning" />
+      ),
     },
     {
       field: "createdAt",
@@ -270,7 +276,12 @@ export default function RequestsPage() {
         </Typography>
       ) : null}
 
-      <Dialog open={Boolean(approveTarget)} onClose={closeApproveDialog} fullWidth maxWidth="sm">
+      <Dialog
+        open={Boolean(approveTarget)}
+        onClose={closeApproveDialog}
+        fullWidth
+        maxWidth="sm"
+      >
         <DialogTitle>Approve request</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2}>
@@ -308,7 +319,9 @@ export default function RequestsPage() {
               fullWidth
               required
             />
-            {approveError ? <Alert severity="warning">{approveError}</Alert> : null}
+            {approveError ? (
+              <Alert severity="warning">{approveError}</Alert>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>

@@ -1,45 +1,43 @@
 "use client";
 
-import type { ReactNode, MouseEvent } from "react";
-import { useMemo, useState } from "react";
-import NextLink from "next/link";
-import { usePathname } from "next/navigation";
+import LogoutIcon from "@mui/icons-material/Logout";
+import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
+import MenuIcon from "@mui/icons-material/Menu";
+import NoteAltOutlinedIcon from "@mui/icons-material/NoteAltOutlined";
+import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import RssFeedOutlinedIcon from "@mui/icons-material/RssFeedOutlined";
+import SpaceDashboardOutlinedIcon from "@mui/icons-material/SpaceDashboardOutlined";
+import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
+import TuneIcon from "@mui/icons-material/Tune";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
+  AppBar,
+  Avatar,
   Box,
   Chip,
-  AppBar,
+  Divider,
   Drawer,
   IconButton,
-  Divider,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Toolbar,
+  Menu,
+  MenuItem,
+  ListItemIcon as MuiListItemIcon,
   Stack,
+  Toolbar,
   Tooltip,
   Typography,
   useTheme,
-  Menu,
-  MenuItem,
-  Avatar,
-  ListItemIcon as MuiListItemIcon,
 } from "@mui/material";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import LogoutIcon from "@mui/icons-material/Logout";
-import MenuIcon from "@mui/icons-material/Menu";
-import SpaceDashboardOutlinedIcon from "@mui/icons-material/SpaceDashboardOutlined";
-import RssFeedOutlinedIcon from "@mui/icons-material/RssFeedOutlined";
-import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
-import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
-import NoteAltOutlinedIcon from "@mui/icons-material/NoteAltOutlined";
-import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
-import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
-import TuneIcon from "@mui/icons-material/Tune";
-
-import { useDashboardAuth } from "./DashboardAuthProvider";
+import NextLink from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import type { MouseEvent, ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { DEFAULT_AUTH_ORIGIN } from "../lib/http";
-import { useRouter } from "next/navigation";
+import { useDashboardAuth } from "./DashboardAuthProvider";
 
 type NavItem = {
   label: string;
@@ -50,14 +48,55 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Overview", href: "/dashboard", caption: "Snapshot of the workspace", icon: <SpaceDashboardOutlinedIcon fontSize="small" /> },
-  { label: "Announcements", href: "/dashboard/announcements", caption: "Broadcast updates", icon: <RssFeedOutlinedIcon fontSize="small" /> },
-  { label: "Members", href: "/dashboard/members", caption: "Directory and status", icon: <PeopleAltOutlinedIcon fontSize="small" /> },
-  { label: "Requests", href: "/dashboard/requests", caption: "Approve new members", adminOnly: true, icon: <TaskAltOutlinedIcon fontSize="small" /> },
-  { label: "Applications", href: "/dashboard/applications", caption: "Intake pipeline", icon: <NoteAltOutlinedIcon fontSize="small" /> },
-  { label: "Roles", href: "/dashboard/roles", caption: "Access control", icon: <ManageAccountsOutlinedIcon fontSize="small" /> },
-  { label: "Profile", href: "/dashboard/profile", caption: "Your account", icon: <PersonOutlinedIcon fontSize="small" /> },
-  { label: "Settings", href: "/dashboard/settings", caption: "Personal settings", icon: <TuneIcon fontSize="small" /> },
+  {
+    label: "Overview",
+    href: "/dashboard",
+    caption: "Snapshot of the workspace",
+    icon: <SpaceDashboardOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Announcements",
+    href: "/dashboard/announcements",
+    caption: "Broadcast updates",
+    icon: <RssFeedOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Members",
+    href: "/dashboard/members",
+    caption: "Directory and status",
+    icon: <PeopleAltOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Requests",
+    href: "/dashboard/requests",
+    caption: "Approve new members",
+    adminOnly: true,
+    icon: <TaskAltOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Applications",
+    href: "/dashboard/applications",
+    caption: "Intake pipeline",
+    icon: <NoteAltOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Roles",
+    href: "/dashboard/roles",
+    caption: "Access control",
+    icon: <ManageAccountsOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Profile",
+    href: "/dashboard/profile",
+    caption: "Your account",
+    icon: <PersonOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Settings",
+    href: "/dashboard/settings",
+    caption: "Personal settings",
+    icon: <TuneIcon fontSize="small" />,
+  },
 ];
 
 type DashboardShellProps = {
@@ -78,13 +117,17 @@ export default function DashboardShell({ children }: DashboardShellProps) {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
 
-  const handleMenuOpen = (e: MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
+  const handleMenuOpen = (e: MouseEvent<HTMLElement>) =>
+    setMenuAnchor(e.currentTarget);
   const handleMenuClose = () => setMenuAnchor(null);
 
   const handleLogout = async () => {
     handleMenuClose();
     try {
-      await fetch(`${DEFAULT_AUTH_ORIGIN}/api/auth/logout`, { method: "POST", credentials: "include" });
+      await fetch(`${DEFAULT_AUTH_ORIGIN}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
     } catch {
       // ignore
     }
@@ -97,8 +140,9 @@ export default function DashboardShell({ children }: DashboardShellProps) {
   );
 
   const currentSection =
-    visibleItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
-      ?.label ?? "Overview";
+    visibleItems.find(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )?.label ?? "Overview";
 
   return (
     <Box
@@ -127,35 +171,67 @@ export default function DashboardShell({ children }: DashboardShellProps) {
       >
         <Toolbar sx={{ minHeight: 64, gap: 1.5 }}>
           <IconButton
-            aria-label={open ? "ナビゲーションを閉じる" : "ナビゲーションを開く"}
+            aria-label={
+              open ? "ナビゲーションを閉じる" : "ナビゲーションを開く"
+            }
             edge="start"
             onClick={() => setOpen((current) => !current)}
             sx={{ color: "text.primary" }}
           >
             <MenuIcon />
           </IconButton>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexGrow: 1 }}>
-            <Typography variant="overline" sx={{ letterSpacing: 4, color: "text.secondary" }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ alignItems: "center", flexGrow: 1 }}
+          >
+            <Typography
+              variant="overline"
+              sx={{ letterSpacing: 4, color: "text.secondary" }}
+            >
               HOSHID
             </Typography>
             <Chip label={currentSection} size="small" variant="outlined" />
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: { xs: "none", sm: "block" } }}
+          >
             {isAdmin ? "Admin workspace" : "Member workspace"}
           </Typography>
           <Tooltip title="アカウントメニュー">
             <IconButton onClick={handleMenuOpen} sx={{ ml: 1 }} size="small">
-              <Avatar sx={{ width: 32, height: 32 }}>{sessionUser?.nickname?.[0]?.toUpperCase() ?? sessionUser?.email?.[0]?.toUpperCase() ?? "U"}</Avatar>
+              <Avatar sx={{ width: 32, height: 32 }}>
+                {sessionUser?.nickname?.[0]?.toUpperCase() ??
+                  sessionUser?.email?.[0]?.toUpperCase() ??
+                  "U"}
+              </Avatar>
             </IconButton>
           </Tooltip>
-          <Menu anchorEl={menuAnchor} open={menuOpen} onClose={handleMenuClose} keepMounted>
-            <MenuItem onClick={() => { handleMenuClose(); router.push("/dashboard/settings"); }}>
+          <Menu
+            anchorEl={menuAnchor}
+            open={menuOpen}
+            onClose={handleMenuClose}
+            keepMounted
+          >
+            <MenuItem
+              onClick={() => {
+                handleMenuClose();
+                router.push("/dashboard/settings");
+              }}
+            >
               <MuiListItemIcon>
                 <TuneIcon fontSize="small" />
               </MuiListItemIcon>
               設定
             </MenuItem>
-            <MenuItem onClick={() => { handleMenuClose(); router.push("/dashboard/profile"); }}>
+            <MenuItem
+              onClick={() => {
+                handleMenuClose();
+                router.push("/dashboard/profile");
+              }}
+            >
               <MuiListItemIcon>
                 <PersonOutlinedIcon fontSize="small" />
               </MuiListItemIcon>
@@ -164,7 +240,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             <MenuItem
               onClick={() => {
                 handleMenuClose();
-                if (sessionUser?.id) router.push(`/dashboard/profile/${sessionUser.id}`);
+                if (sessionUser?.id)
+                  router.push(`/dashboard/profile/${sessionUser.id}`);
               }}
             >
               <MuiListItemIcon>
@@ -215,10 +292,16 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           }}
         >
           <Stack spacing={0.25} sx={{ display: open ? "grid" : "none" }}>
-            <Typography variant="overline" sx={{ letterSpacing: 4, color: "text.secondary" }}>
+            <Typography
+              variant="overline"
+              sx={{ letterSpacing: 4, color: "text.secondary" }}
+            >
               HOSHID
             </Typography>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 800, lineHeight: 1 }}
+            >
               Dashboard
             </Typography>
           </Stack>
@@ -226,16 +309,33 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
         <Divider />
 
-        <Box sx={{ p: open ? 1.5 : 1, display: "flex", flexDirection: "column", gap: 2, height: "100%", overflow: "hidden" }}>
-
-          <List disablePadding sx={{ display: "grid", gap: 0.5, overflowY: "auto", flexGrow: 1 }}>
+        <Box
+          sx={{
+            p: open ? 1.5 : 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            height: "100%",
+            overflow: "hidden",
+          }}
+        >
+          <List
+            disablePadding
+            sx={{ display: "grid", gap: 0.5, overflowY: "auto", flexGrow: 1 }}
+          >
             {visibleItems.map((item) => {
               const active =
                 pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+                (item.href !== "/dashboard" &&
+                  pathname.startsWith(`${item.href}/`));
 
               return (
-                <Tooltip key={item.href} title={open ? "" : item.label} placement="right" disableHoverListener={open}>
+                <Tooltip
+                  key={item.href}
+                  title={open ? "" : item.label}
+                  placement="right"
+                  disableHoverListener={open}
+                >
                   <ListItemButton
                     component={NextLink}
                     href={item.href}
@@ -248,7 +348,9 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                       borderRadius: 1,
                       border: "1px solid",
                       borderColor: active ? "primary.main" : "divider",
-                      bgcolor: active ? "rgba(236, 72, 153, 0.08)" : "transparent",
+                      bgcolor: active
+                        ? "rgba(236, 72, 153, 0.08)"
+                        : "transparent",
                       "&.Mui-selected": {
                         bgcolor: "rgba(236, 72, 153, 0.08)",
                       },
@@ -270,7 +372,11 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                     </ListItemIcon>
                     {open ? (
                       <ListItemText
-                        primary={<Typography sx={{ fontWeight: 700, lineHeight: 1.2 }}>{item.label}</Typography>}
+                        primary={
+                          <Typography sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                            {item.label}
+                          </Typography>
+                        }
                         secondary={
                           <Typography variant="caption" color="text.secondary">
                             {item.caption}
@@ -284,8 +390,20 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             })}
           </List>
 
-          <Box sx={{ mt: "auto", borderTop: "1px solid", borderColor: "divider", pt: 1.5, display: open ? "block" : "none" }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+          <Box
+            sx={{
+              mt: "auto",
+              borderTop: "1px solid",
+              borderColor: "divider",
+              pt: 1.5,
+              display: open ? "block" : "none",
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 0.5 }}
+            >
               Current access
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>

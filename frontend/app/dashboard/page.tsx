@@ -1,20 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Alert, Box, Button, Divider, Stack, Typography } from "@mui/material";
 import NextLink from "next/link";
-import {
-  Alert,
-  Box,
-  Button,
-  Divider,
-  Stack,
-  Typography,
-} from "@mui/material";
-
+import { useEffect, useState } from "react";
+import { useDashboardAuth } from "./components/DashboardAuthProvider";
 import MetricCard from "./components/MetricCard";
 import PageHeader from "./components/PageHeader";
 import { DEFAULT_API_ORIGIN, readErrorMessage } from "./lib/http";
-import { useDashboardAuth } from "./components/DashboardAuthProvider";
 import { useStoredState } from "./lib/storage";
 
 type MeResponse = {
@@ -87,7 +79,9 @@ export default function DashboardOverviewPage() {
           }
 
           const mePayload = (await meRes.json()) as MeResponse;
-          const annPayload = (await annRes.json()) as { announcements: Announcement[] };
+          const annPayload = (await annRes.json()) as {
+            announcements: Announcement[];
+          };
           if (active) {
             setMe(mePayload);
             setAnnouncements(annPayload.announcements ?? []);
@@ -95,7 +89,11 @@ export default function DashboardOverviewPage() {
         }
       } catch (caught) {
         if (active) {
-          setApiError(caught instanceof Error ? caught.message : "Failed to load API data.");
+          setApiError(
+            caught instanceof Error
+              ? caught.message
+              : "Failed to load API data.",
+          );
         }
       }
 
@@ -117,8 +115,12 @@ export default function DashboardOverviewPage() {
             throw new Error(await readErrorMessage(requestsRes));
           }
 
-          const membersPayload = (await membersRes.json()) as { users: Member[] };
-          const requestsPayload = (await requestsRes.json()) as { requests: MemberRequest[] };
+          const membersPayload = (await membersRes.json()) as {
+            users: Member[];
+          };
+          const requestsPayload = (await requestsRes.json()) as {
+            requests: MemberRequest[];
+          };
           const users = membersPayload.users ?? [];
           if (active) {
             setMembers(users);
@@ -127,7 +129,11 @@ export default function DashboardOverviewPage() {
         }
       } catch (caught) {
         if (active) {
-          setAuthError(caught instanceof Error ? caught.message : "Failed to load auth data.");
+          setAuthError(
+            caught instanceof Error
+              ? caught.message
+              : "Failed to load auth data.",
+          );
         }
       }
 
@@ -149,7 +155,11 @@ export default function DashboardOverviewPage() {
         title="Overview"
         subtitle="A quick look at announcements, members, and approvals."
         action={
-          <Button component={NextLink} href="/dashboard/settings" variant="outlined">
+          <Button
+            component={NextLink}
+            href="/dashboard/settings"
+            variant="outlined"
+          >
             Connection settings
           </Button>
         }
@@ -179,7 +189,9 @@ export default function DashboardOverviewPage() {
 
       <Stack spacing={2}>
         {apiError ? <Alert severity="warning">{apiError}</Alert> : null}
-        {isAdmin && authError ? <Alert severity="warning">{authError}</Alert> : null}
+        {isAdmin && authError ? (
+          <Alert severity="warning">{authError}</Alert>
+        ) : null}
       </Stack>
 
       <Divider />

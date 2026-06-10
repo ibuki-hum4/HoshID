@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
@@ -63,7 +63,7 @@ export default function RolesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (sessionLoading || !isAdmin || !authToken) {
       setLoading(false);
       return;
@@ -84,11 +84,11 @@ export default function RolesPage() {
     const payload = (await response.json()) as { roles: Role[] };
     setRoles(payload.roles ?? []);
     setLoading(false);
-  };
+  }, [apiOrigin, authToken, isAdmin, sessionLoading]);
 
   useEffect(() => {
     void load();
-  }, [apiOrigin, authToken, isAdmin, sessionLoading]);
+  }, [load]);
 
   const openCreateDialog = () => {
     setDialogMode("create");

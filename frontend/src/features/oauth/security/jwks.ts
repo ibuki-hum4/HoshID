@@ -12,7 +12,7 @@ type JwkEnvValue = {
 };
 
 type JsonWebKeySet = {
-  keys: Array<JsonWebKey & { kid: string }>; 
+  keys: Array<JsonWebKey & { kid: string }>;
 };
 
 function parseJwkEnvValue(value: string): Jwk {
@@ -20,8 +20,13 @@ function parseJwkEnvValue(value: string): Jwk {
   try {
     parsed = JSON.parse(value) as JwkEnvValue;
   } catch (e) {
-    console.error("Failed to parse JWK env value (truncated):", String(value).slice(0, 200));
-    auditLog("jwks.parse_error", { truncatedValue: String(value).slice(0, 200) });
+    console.error(
+      "Failed to parse JWK env value (truncated):",
+      String(value).slice(0, 200),
+    );
+    auditLog("jwks.parse_error", {
+      truncatedValue: String(value).slice(0, 200),
+    });
     throw e;
   }
 
@@ -51,14 +56,28 @@ export function loadRotationKeysFromEnv(): Jwk[] {
         try {
           keys.push(parseJwkEnvValue(JSON.stringify(entry)));
         } catch (_err) {
-          console.error('Skipping malformed JWK entry in OIDC_JWKS_JSON (truncated):', String(JSON.stringify(entry)).slice(0, 200));
-          auditLog('jwks.skip_malformed_entry', { source: 'OIDC_JWKS_JSON', entry: String(JSON.stringify(entry)).slice(0, 200) });
+          console.error(
+            "Skipping malformed JWK entry in OIDC_JWKS_JSON (truncated):",
+            String(JSON.stringify(entry)).slice(0, 200),
+          );
+          auditLog("jwks.skip_malformed_entry", {
+            source: "OIDC_JWKS_JSON",
+            entry: String(JSON.stringify(entry)).slice(0, 200),
+          });
         }
       }
-      return keys.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+      return keys.sort(
+        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+      );
     } catch (_e) {
-      console.error('Failed to parse OIDC_JWKS_JSON as JSON; falling back to individual env vars. Value (truncated):', String(bulk).slice(0, 500));
-      auditLog('jwks.parse_failure', { source: 'OIDC_JWKS_JSON', value: String(bulk).slice(0, 500) });
+      console.error(
+        "Failed to parse OIDC_JWKS_JSON as JSON; falling back to individual env vars. Value (truncated):",
+        String(bulk).slice(0, 500),
+      );
+      auditLog("jwks.parse_failure", {
+        source: "OIDC_JWKS_JSON",
+        value: String(bulk).slice(0, 500),
+      });
       // fall through to try current/previous
     }
   }
@@ -71,8 +90,14 @@ export function loadRotationKeysFromEnv(): Jwk[] {
     try {
       keys.push(parseJwkEnvValue(current));
     } catch (_e) {
-      console.error('Skipping malformed OIDC_JWK_CURRENT (truncated):', String(current).slice(0, 500));
-      auditLog('jwks.skip_malformed_entry', { source: 'OIDC_JWK_CURRENT', value: String(current).slice(0, 500) });
+      console.error(
+        "Skipping malformed OIDC_JWK_CURRENT (truncated):",
+        String(current).slice(0, 500),
+      );
+      auditLog("jwks.skip_malformed_entry", {
+        source: "OIDC_JWK_CURRENT",
+        value: String(current).slice(0, 500),
+      });
     }
   }
 
@@ -80,12 +105,20 @@ export function loadRotationKeysFromEnv(): Jwk[] {
     try {
       keys.push(parseJwkEnvValue(previous));
     } catch (_e) {
-      console.error('Skipping malformed OIDC_JWK_PREVIOUS (truncated):', String(previous).slice(0, 500));
-      auditLog('jwks.skip_malformed_entry', { source: 'OIDC_JWK_PREVIOUS', value: String(previous).slice(0, 500) });
+      console.error(
+        "Skipping malformed OIDC_JWK_PREVIOUS (truncated):",
+        String(previous).slice(0, 500),
+      );
+      auditLog("jwks.skip_malformed_entry", {
+        source: "OIDC_JWK_PREVIOUS",
+        value: String(previous).slice(0, 500),
+      });
     }
   }
 
-  return keys.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+  return keys.sort(
+    (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+  );
 }
 
 export function toPublicJwks(keys: readonly Jwk[]): JsonWebKeySet {
@@ -97,7 +130,10 @@ export function toPublicJwks(keys: readonly Jwk[]): JsonWebKeySet {
           kid: key.id,
         };
       } catch (_e) {
-        console.warn("Failed to parse publicKey as JSON for JWKS entry, falling back to minimal record", key.id);
+        console.warn(
+          "Failed to parse publicKey as JSON for JWKS entry, falling back to minimal record",
+          key.id,
+        );
         return {
           kid: key.id,
           alg: key.alg ?? "RS256",
@@ -109,7 +145,11 @@ export function toPublicJwks(keys: readonly Jwk[]): JsonWebKeySet {
 }
 
 export function hasJwksEnvConfig(): boolean {
-  return Boolean(process.env.OIDC_JWKS_JSON || process.env.OIDC_JWK_CURRENT || process.env.OIDC_JWK_PREVIOUS);
+  return Boolean(
+    process.env.OIDC_JWKS_JSON ||
+      process.env.OIDC_JWK_CURRENT ||
+      process.env.OIDC_JWK_PREVIOUS,
+  );
 }
 
 export function toOAuthProviderJwks(keys: readonly Jwk[]) {

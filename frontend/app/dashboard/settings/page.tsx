@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -10,9 +9,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-
-import PageHeader from "../components/PageHeader";
+import { useEffect, useState } from "react";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
+import PageHeader from "../components/PageHeader";
 import { DEFAULT_AUTH_ORIGIN, readErrorMessage } from "../lib/http";
 
 export default function SettingsPage() {
@@ -45,12 +44,15 @@ export default function SettingsPage() {
     setSavingBirthday(true);
 
     try {
-      const response = await fetch(`${DEFAULT_AUTH_ORIGIN}/api/auth/update-user`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ birthday }),
-      });
+      const response = await fetch(
+        `${DEFAULT_AUTH_ORIGIN}/api/auth/update-user`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ birthday }),
+        },
+      );
 
       if (!response.ok) {
         setError(await readErrorMessage(response));
@@ -60,7 +62,9 @@ export default function SettingsPage() {
       setBirthdayLocked(true);
       setNotice("生年月日を保存しました。以後は変更できません。");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存に失敗しました。");
+      setError(
+        caught instanceof Error ? caught.message : "保存に失敗しました。",
+      );
     } finally {
       setSavingBirthday(false);
     }
@@ -76,15 +80,18 @@ export default function SettingsPage() {
     setSecurityLoading(true);
 
     try {
-      const response = await fetch(`${DEFAULT_AUTH_ORIGIN}/api/auth/send-verification-email`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: sessionUser.email,
-          callbackURL: `${window.location.origin}/dashboard/settings`,
-        }),
-      });
+      const response = await fetch(
+        `${DEFAULT_AUTH_ORIGIN}/api/auth/send-verification-email`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: sessionUser.email,
+            callbackURL: `${window.location.origin}/dashboard/settings`,
+          }),
+        },
+      );
 
       if (!response.ok) {
         setError(await readErrorMessage(response));
@@ -93,7 +100,9 @@ export default function SettingsPage() {
 
       setNotice("認証メールを送信しました。");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "送信に失敗しました。");
+      setError(
+        caught instanceof Error ? caught.message : "送信に失敗しました。",
+      );
     } finally {
       setSecurityLoading(false);
     }
@@ -109,15 +118,18 @@ export default function SettingsPage() {
     setSecurityLoading(true);
 
     try {
-      const response = await fetch(`${DEFAULT_AUTH_ORIGIN}/api/auth/request-password-reset`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: sessionUser.email,
-          redirectTo: `${window.location.origin}/reset-password`,
-        }),
-      });
+      const response = await fetch(
+        `${DEFAULT_AUTH_ORIGIN}/api/auth/request-password-reset`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: sessionUser.email,
+            redirectTo: `${window.location.origin}/reset-password`,
+          }),
+        },
+      );
 
       if (!response.ok) {
         setError(await readErrorMessage(response));
@@ -126,7 +138,9 @@ export default function SettingsPage() {
 
       setNotice("パスワード再設定メールを送信しました。");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "送信に失敗しました。");
+      setError(
+        caught instanceof Error ? caught.message : "送信に失敗しました。",
+      );
     } finally {
       setSecurityLoading(false);
     }
@@ -207,10 +221,16 @@ export default function SettingsPage() {
             <Button
               variant="contained"
               onClick={sendVerificationEmail}
-              disabled={securityLoading || sessionLoading || Boolean(sessionUser?.emailVerified)}
+              disabled={
+                securityLoading ||
+                sessionLoading ||
+                Boolean(sessionUser?.emailVerified)
+              }
               sx={{ alignSelf: "flex-start" }}
             >
-              {sessionUser?.emailVerified ? "Email verified" : "Send verification email"}
+              {sessionUser?.emailVerified
+                ? "Email verified"
+                : "Send verification email"}
             </Button>
             <Button
               variant="outlined"
@@ -221,7 +241,6 @@ export default function SettingsPage() {
               Send password reset email
             </Button>
           </Stack>
-
         </Stack>
       </Paper>
     </Stack>

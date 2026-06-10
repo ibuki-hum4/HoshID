@@ -1,7 +1,7 @@
 import "server-only";
 
-import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
 
 // Load .env.development at runtime when present so local `next start` picks up
 // the same environment values that `next build` may have used. This helps when
@@ -9,15 +9,15 @@ import { PrismaPg } from "@prisma/adapter-pg";
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const dotenv = require("dotenv");
-  const path = require("path");
+  const path = require("node:path");
   const envPath = path.resolve(process.cwd(), ".env.development");
   dotenv.config({ path: envPath });
-} catch (e) {
+} catch (_e) {
   // best-effort; if dotenv is not available we silently continue
 }
 
 declare global {
-  var prisma: PrismaClient | undefined;
+  var prismaGlobal: PrismaClient | undefined;
 }
 
 const connectionString =
@@ -26,8 +26,8 @@ const connectionString =
 
 const adapter = new PrismaPg({ connectionString });
 
-export const prisma = globalThis.prisma ?? new PrismaClient({ adapter });
+export const prisma = globalThis.prismaGlobal ?? new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== "production") {
-  globalThis.prisma = prisma;
+  globalThis.prismaGlobal = prisma;
 }

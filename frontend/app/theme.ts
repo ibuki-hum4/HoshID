@@ -27,7 +27,7 @@ const theme = createTheme({
   },
   typography: {
     fontFamily:
-      "var(--font-inter), var(--font-noto-sans-jp), ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      'var(--font-inter), var(--font-noto-sans-jp), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
     h1: { fontWeight: 800 },
     h2: { fontWeight: 800 },
     h3: { fontWeight: 800 },

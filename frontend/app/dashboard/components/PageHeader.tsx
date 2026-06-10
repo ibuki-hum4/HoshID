@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { Box, Stack, Typography } from "@mui/material";
+import type { ReactNode } from "react";
 
 type PageHeaderProps = {
   title: string;
@@ -7,7 +7,11 @@ type PageHeaderProps = {
   action?: ReactNode;
 };
 
-export default function PageHeader({ title, subtitle, action }: PageHeaderProps) {
+export default function PageHeader({
+  title,
+  subtitle,
+  action,
+}: PageHeaderProps) {
   return (
     <Stack
       direction={{ xs: "column", md: "row" }}
@@ -18,7 +22,11 @@ export default function PageHeader({ title, subtitle, action }: PageHeaderProps)
       }}
     >
       <Box>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+        <Typography
+          variant="h4"
+          component="h1"
+          sx={{ fontWeight: 800, lineHeight: 1.1 }}
+        >
           {title}
         </Typography>
         {subtitle ? (

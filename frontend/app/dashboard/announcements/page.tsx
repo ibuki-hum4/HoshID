@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -13,10 +12,10 @@ import {
   Typography,
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-
-import PageHeader from "../components/PageHeader";
+import { useCallback, useEffect, useState } from "react";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
+import PageHeader from "../components/PageHeader";
 import {
   DEFAULT_API_ORIGIN,
   formatDateTime,
@@ -70,7 +69,12 @@ export default function AnnouncementsPage() {
       headerName: "Status",
       width: 150,
       renderCell: (params) => (
-        <Chip label={String(params.value || "-")} color={statusColor(String(params.value || ""))} size="small" variant="outlined" />
+        <Chip
+          label={String(params.value || "-")}
+          color={statusColor(String(params.value || ""))}
+          size="small"
+          variant="outlined"
+        />
       ),
     },
     {
@@ -83,7 +87,7 @@ export default function AnnouncementsPage() {
     },
   ];
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (sessionLoading || !authToken) {
       setLoading(false);
       return;
@@ -108,14 +112,16 @@ export default function AnnouncementsPage() {
       return;
     }
 
-    const payload = (await response.json()) as { announcements: Announcement[] };
+    const payload = (await response.json()) as {
+      announcements: Announcement[];
+    };
     setAnnouncements(payload.announcements ?? []);
     setLoading(false);
-  };
+  }, [apiOrigin, authToken, sessionLoading]);
 
   useEffect(() => {
     void load();
-  }, [apiOrigin, authToken, sessionLoading]);
+  }, [load]);
 
   const handleCreate = async () => {
     if (sessionLoading || !authToken) {
@@ -194,7 +200,9 @@ export default function AnnouncementsPage() {
           </Button>
         </Stack>
         {!adminMode ? (
-          <Alert severity="info">Admin permissions are required to create announcements.</Alert>
+          <Alert severity="info">
+            Admin permissions are required to create announcements.
+          </Alert>
         ) : null}
       </Stack>
 

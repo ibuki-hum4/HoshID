@@ -1,11 +1,15 @@
 import { OIDC_ALLOWED_SCOPES, type OidcScope } from "../config";
 
-export function normalizeRequestedScopes(scopes: readonly string[] | undefined): OidcScope[] {
+export function normalizeRequestedScopes(
+  scopes: readonly string[] | undefined,
+): OidcScope[] {
   if (!scopes || scopes.length === 0) {
     return ["openid"];
   }
 
-  const unique = [...new Set(scopes.map((scope) => scope.trim()).filter(Boolean))];
+  const unique = [
+    ...new Set(scopes.map((scope) => scope.trim()).filter(Boolean)),
+  ];
   return unique.map((scope) => assertAllowedScope(scope));
 }
 

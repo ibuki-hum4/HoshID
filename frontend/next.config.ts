@@ -11,9 +11,8 @@ const nextConfig: NextConfig = {
     },
   },
 
-  experimental: {
-  },
-  
+  experimental: {},
+
   async headers() {
     return [
       {

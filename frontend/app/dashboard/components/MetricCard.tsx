@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { Box, Paper, Typography } from "@mui/material";
+import type { ReactNode } from "react";
 
 type MetricCardProps = {
   label: string;
@@ -8,7 +8,12 @@ type MetricCardProps = {
   icon?: ReactNode;
 };
 
-export default function MetricCard({ label, value, helper, icon }: MetricCardProps) {
+export default function MetricCard({
+  label,
+  value,
+  helper,
+  icon,
+}: MetricCardProps) {
   return (
     <Paper
       elevation={0}

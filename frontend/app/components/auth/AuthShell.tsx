@@ -1,7 +1,14 @@
 "use client";
 
+import {
+  Box,
+  Container,
+  Divider,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 import type { ReactNode } from "react";
-import { Box, Container, Divider, Paper, Stack, Typography } from "@mui/material";
 
 type AuthShellProps = {
   title: string;
@@ -10,7 +17,12 @@ type AuthShellProps = {
   footer?: ReactNode;
 };
 
-export default function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
+export default function AuthShell({
+  title,
+  subtitle,
+  children,
+  footer,
+}: AuthShellProps) {
   return (
     <Box
       sx={{
@@ -39,14 +51,22 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
               maxWidth: 560,
             }}
           >
-            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 4 }}>
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ letterSpacing: 4 }}
+            >
               HOSHID
             </Typography>
             <Typography variant="h2" component="h1" sx={{ lineHeight: 1.1 }}>
               {title}
             </Typography>
             {subtitle ? (
-              <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500 }}>
+              <Typography
+                variant="h6"
+                color="text.secondary"
+                sx={{ fontWeight: 500 }}
+              >
                 {subtitle}
               </Typography>
             ) : null}
@@ -66,10 +86,18 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
             <Box sx={{ position: "relative" }}>
               <Stack spacing={2.5}>
                 <Stack spacing={0.5}>
-                  <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 2.5 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ letterSpacing: 2.5 }}
+                  >
                     AUTH PORTAL
                   </Typography>
-                  <Typography variant="h4" component="h2" sx={{ fontWeight: 700 }}>
+                  <Typography
+                    variant="h4"
+                    component="h2"
+                    sx={{ fontWeight: 700 }}
+                  >
                     {title}
                   </Typography>
                   {subtitle ? (
