@@ -28,6 +28,7 @@ spec:
           containers:
             - name: oidc-jwk-rotation
               image: docker.io/kemar1/hoshid-frontend:latest-jwk-rotator
+              imagePullPolicy: Always
               env:
                 - name: OIDC_JWK_ROTATION_NAMESPACE
                   value: hoshid

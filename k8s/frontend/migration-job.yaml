@@ -13,6 +13,7 @@ spec:
           # standalone ランタイムイメージには Prisma CLI が含まれないため、
           # Dockerfile の migrator ステージからビルドした専用イメージを使用する
           image: docker.io/kemar1/hoshid-frontend:latest-migrate
+          imagePullPolicy: Always
           env:
             - name: DATABASE_URL
               valueFrom:
