@@ -16,12 +16,21 @@ type SessionResponse = {
 async function readSession(
   request: NextRequest,
 ): Promise<SessionResponse | null> {
-  const response = await fetch(new URL("/api/auth/get-session", request.url), {
-    headers: {
-      cookie: request.headers.get("cookie") ?? "",
+  // Reverse proxies (e.g. Traefik) terminate TLS and forward
+  // `X-Forwarded-Proto: https`, but `request.url` keeps the pod's plain-HTTP
+  // listen address (localhost:PORT). Combining the two yields
+  // `https://localhost:PORT`, which refuses the connection since nothing
+  // serves TLS there. Always call the app on its own HTTP port instead.
+  const internalOrigin = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
+  const response = await fetch(
+    new URL("/api/auth/get-session", internalOrigin),
+    {
+      headers: {
+        cookie: request.headers.get("cookie") ?? "",
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
+  );
 
   if (!response.ok) {
     return null;
