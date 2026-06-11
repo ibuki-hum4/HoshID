@@ -13,6 +13,8 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { normalizeUsername, validateUsernameFormat } from "@/lib/username";
+
 export default function SetupForm() {
   const router = useRouter();
   const authOrigin =
@@ -22,6 +24,7 @@ export default function SetupForm() {
   const [success, setSuccess] = useState("");
   const [formData, setFormData] = useState({
     email: "",
+    username: "",
     password: "",
     confirmPassword: "",
   });
@@ -49,6 +52,21 @@ export default function SetupForm() {
       return;
     }
 
+    const requestedUsername = formData.username.trim();
+    if (!requestedUsername) {
+      setError("カスタムIDを入力してください");
+      setLoading(false);
+      return;
+    }
+
+    const username = normalizeUsername(requestedUsername);
+    const formatError = validateUsernameFormat(username);
+    if (formatError) {
+      setError(formatError);
+      setLoading(false);
+      return;
+    }
+
     try {
       // Better Auth の sign-up
       const signUpResponse = await fetch(
@@ -58,7 +76,7 @@ export default function SetupForm() {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({
             name: "Administrator",
-            username: "admin",
+            username,
             email: formData.email,
             password: formData.password,
             callbackURL: `${window.location.origin}/setup/complete`,
@@ -147,6 +165,18 @@ export default function SetupForm() {
                 onChange={handleChange}
                 required
                 disabled={loading}
+              />
+
+              <TextField
+                fullWidth
+                label="カスタムID"
+                name="username"
+                autoComplete="off"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                disabled={loading}
+                helperText="3〜30文字の半角英数字、._ のみ使用できます。ログイン時に使用します。"
               />
 
               <TextField
