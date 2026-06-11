@@ -17,8 +17,9 @@ import { normalizeUsername, validateUsernameFormat } from "@/lib/username";
 
 export default function SetupForm() {
   const router = useRouter();
-  const authOrigin =
-    process.env.NEXT_PUBLIC_AUTH_SERVICE_ORIGIN ?? "http://localhost:3000";
+  // Default to a relative path so requests resolve against the current
+  // origin instead of a `localhost:3000` baked in at build time.
+  const authOrigin = process.env.NEXT_PUBLIC_AUTH_SERVICE_ORIGIN ?? "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");

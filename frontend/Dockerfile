@@ -12,6 +12,10 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost/dummy"
 # ビルド時のページデータ収集で lib/auth.ts が評価されるためダミー値が必要。
 # 実際の値は実行時に Secret から注入される（Dockerfile には実値を含めない）。
 ENV BETTER_AUTH_SECRET="dummy-build-time-secret-not-used-at-runtime"
+# NEXT_PUBLIC_* はビルド時に静的展開され、サーバー側コード（lib/auth.ts の
+# better-auth baseURL、OIDC issuer、確認メールのリンク生成等）にも埋め込まれる。
+# 実行時の Pod 環境変数では上書きされないため、本番URLをここで指定する。
+ENV NEXT_PUBLIC_APP_URL="https://hoshid.skyia.jp"
 
 RUN bunx prisma generate --schema=prisma/schema.prisma
 RUN bun run build
