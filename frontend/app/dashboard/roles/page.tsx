@@ -2,14 +2,19 @@
 
 import AddIcon from "@mui/icons-material/Add";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import ModeEditOutlineOutlinedIcon from "@mui/icons-material/ModeEditOutlineOutlined";
 import {
   Alert,
   Button,
+  Checkbox,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
+  FormGroup,
   IconButton,
   Stack,
   TextField,
@@ -18,6 +23,12 @@ import {
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useCallback, useEffect, useState } from "react";
+
+import {
+  PERMISSION_LABELS,
+  PERMISSIONS,
+  type PermissionKey,
+} from "@/src/features/rbac/permissions";
 
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
@@ -31,31 +42,40 @@ type Role = {
   customId: string;
   description: string;
   permissionBitmask: number;
+  isProtected: boolean;
 };
 
 type RoleForm = {
   name: string;
   customId: string;
   description: string;
-  permissionBitmask: string;
+  permissionBitmask: number;
 };
 
 const emptyForm: RoleForm = {
   name: "",
   customId: "",
   description: "",
-  permissionBitmask: "0",
+  permissionBitmask: 0,
 };
+
+const PERMISSION_KEYS = Object.keys(PERMISSIONS) as PermissionKey[];
 
 export default function RolesPage() {
   const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
-  const { authToken, isAdmin, loading: sessionLoading } = useDashboardAuth();
+  const {
+    authToken,
+    loading: sessionLoading,
+    hasPermission,
+  } = useDashboardAuth();
+  const canManage = hasPermission(PERMISSIONS.MANAGE_ROLES);
+  const canView = canManage || hasPermission(PERMISSIONS.ASSIGN_ROLES);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [form, setForm] = useState<RoleForm>(emptyForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -64,7 +84,7 @@ export default function RolesPage() {
   const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
-    if (sessionLoading || !isAdmin || !authToken) {
+    if (sessionLoading || !canView || !authToken) {
       setLoading(false);
       return;
     }
@@ -84,7 +104,7 @@ export default function RolesPage() {
     const payload = (await response.json()) as { roles: Role[] };
     setRoles(payload.roles ?? []);
     setLoading(false);
-  }, [apiOrigin, authToken, isAdmin, sessionLoading]);
+  }, [apiOrigin, authToken, canView, sessionLoading]);
 
   useEffect(() => {
     void load();
@@ -92,39 +112,48 @@ export default function RolesPage() {
 
   const openCreateDialog = () => {
     setDialogMode("create");
-    setEditingId(null);
+    setEditingRole(null);
     setForm(emptyForm);
     setFormError("");
   };
 
   const openEditDialog = (role: Role) => {
     setDialogMode("edit");
-    setEditingId(role.id);
+    setEditingRole(role);
     setForm({
       name: role.name,
       customId: role.customId,
       description: role.description,
-      permissionBitmask: String(role.permissionBitmask),
+      permissionBitmask: role.permissionBitmask,
     });
     setFormError("");
   };
 
   const closeDialog = () => {
     setDialogMode(null);
-    setEditingId(null);
+    setEditingRole(null);
     setForm(emptyForm);
     setFormError("");
   };
 
+  const togglePermission = (bit: number) => {
+    setForm((prev) => ({
+      ...prev,
+      permissionBitmask:
+        (prev.permissionBitmask & bit) === bit
+          ? prev.permissionBitmask & ~bit
+          : prev.permissionBitmask | bit,
+    }));
+  };
+
   const submitForm = async () => {
-    if (sessionLoading || !isAdmin || !authToken || !dialogMode) {
+    if (sessionLoading || !canManage || !authToken || !dialogMode) {
       return;
     }
 
     const name = form.name.trim();
     const customId = form.customId.trim();
     const description = form.description.trim();
-    const permissionBitmask = Number.parseInt(form.permissionBitmask, 10);
 
     if (!name) {
       setFormError("ロール名を入力してください。");
@@ -134,10 +163,6 @@ export default function RolesPage() {
       setFormError("カスタムIDを入力してください。");
       return;
     }
-    if (Number.isNaN(permissionBitmask)) {
-      setFormError("権限ビットマスクは整数で入力してください。");
-      return;
-    }
 
     setSaving(true);
     setFormError("");
@@ -145,7 +170,7 @@ export default function RolesPage() {
     const url =
       dialogMode === "create"
         ? `${apiOrigin}/api/admin/roles`
-        : `${apiOrigin}/api/admin/roles?id=${encodeURIComponent(editingId ?? "")}`;
+        : `${apiOrigin}/api/admin/roles?id=${encodeURIComponent(editingRole?.id ?? "")}`;
 
     const response = await fetch(url, {
       method: dialogMode === "create" ? "POST" : "PUT",
@@ -153,7 +178,12 @@ export default function RolesPage() {
         Authorization: `Bearer ${authToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name, customId, description, permissionBitmask }),
+      body: JSON.stringify({
+        name,
+        customId,
+        description,
+        permissionBitmask: form.permissionBitmask,
+      }),
     });
 
     if (!response.ok) {
@@ -168,7 +198,7 @@ export default function RolesPage() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget || sessionLoading || !isAdmin || !authToken) {
+    if (!deleteTarget || sessionLoading || !canManage || !authToken) {
       return;
     }
 
@@ -202,58 +232,99 @@ export default function RolesPage() {
       sortable: false,
       filterable: false,
       disableColumnMenu: true,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={0.25}>
-          <Tooltip title="編集">
-            <IconButton
-              size="small"
-              onClick={() => openEditDialog(params.row)}
-              aria-label="編集"
+      renderCell: (params) =>
+        canManage ? (
+          <Stack direction="row" spacing={0.25}>
+            <Tooltip title="編集">
+              <IconButton
+                size="small"
+                onClick={() => openEditDialog(params.row)}
+                aria-label="編集"
+              >
+                <ModeEditOutlineOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip
+              title={
+                params.row.isProtected
+                  ? "組み込みロールは削除できません"
+                  : "削除"
+              }
             >
-              <ModeEditOutlineOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="削除">
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => setDeleteTarget(params.row)}
-              aria-label="削除"
-            >
-              <HighlightOffIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      ),
+              <span>
+                <IconButton
+                  size="small"
+                  color="error"
+                  disabled={params.row.isProtected}
+                  onClick={() => setDeleteTarget(params.row)}
+                  aria-label="削除"
+                >
+                  <HighlightOffIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
+        ) : null,
     },
     {
       field: "name",
       headerName: "ロール名",
       flex: 1,
-      minWidth: 200,
+      minWidth: 180,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+          <Typography variant="body2">{params.value}</Typography>
+          {params.row.isProtected ? (
+            <Tooltip title="組み込みロール">
+              <LockOutlinedIcon fontSize="inherit" color="disabled" />
+            </Tooltip>
+          ) : null}
+        </Stack>
+      ),
     },
     {
       field: "customId",
       headerName: "カスタムID",
-      flex: 0.8,
-      minWidth: 160,
+      flex: 0.7,
+      minWidth: 140,
     },
     {
       field: "description",
       headerName: "説明",
-      flex: 1.6,
-      minWidth: 280,
+      flex: 1.4,
+      minWidth: 220,
     },
     {
       field: "permissionBitmask",
-      headerName: "権限ビットマスク",
-      width: 160,
-      align: "right",
-      headerAlign: "right",
+      headerName: "権限",
+      flex: 1.6,
+      minWidth: 260,
+      sortable: false,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", py: 0.5 }}>
+          {PERMISSION_KEYS.filter(
+            (key) =>
+              (params.row.permissionBitmask & PERMISSIONS[key]) ===
+              PERMISSIONS[key],
+          ).map((key) => (
+            <Chip
+              key={key}
+              label={PERMISSION_LABELS[key]}
+              size="small"
+              variant="outlined"
+            />
+          ))}
+          {params.row.permissionBitmask === 0 ? (
+            <Typography variant="caption" color="text.secondary">
+              なし
+            </Typography>
+          ) : null}
+        </Stack>
+      ),
     },
   ];
 
-  if (sessionLoading || !isAdmin) {
+  if (sessionLoading || !canView) {
     return null;
   }
 
@@ -261,15 +332,17 @@ export default function RolesPage() {
     <Stack spacing={3}>
       <PageHeader
         title="ロール管理"
-        subtitle="システムのロール一覧を表示・管理します。ロール名をクリックして詳細を編集できます。"
+        subtitle="システムのロール一覧を表示・管理します。各ロールに付与する権限はチェックボックスで設定できます。"
         action={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreateDialog}
-          >
-            新規作成
-          </Button>
+          canManage ? (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openCreateDialog}
+            >
+              新規作成
+            </Button>
+          ) : undefined
         }
       />
 
@@ -282,6 +355,7 @@ export default function RolesPage() {
         loading={loading}
         disableRowSelectionOnClick
         getRowId={(row) => row.id}
+        getRowHeight={() => "auto"}
         pageSizeOptions={[5, 10, 25]}
         initialState={{
           pagination: { paginationModel: { pageSize: 10, page: 0 } },
@@ -324,6 +398,12 @@ export default function RolesPage() {
               }
               fullWidth
               required
+              disabled={Boolean(editingRole?.isProtected)}
+              helperText={
+                editingRole?.isProtected
+                  ? "組み込みロールのカスタムIDは変更できません。"
+                  : undefined
+              }
             />
             <TextField
               label="説明"
@@ -338,18 +418,26 @@ export default function RolesPage() {
               multiline
               minRows={2}
             />
-            <TextField
-              label="権限ビットマスク"
-              value={form.permissionBitmask}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  permissionBitmask: event.target.value,
-                }))
-              }
-              fullWidth
-              type="number"
-            />
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">権限</Typography>
+              <FormGroup>
+                {PERMISSION_KEYS.map((key) => (
+                  <FormControlLabel
+                    key={key}
+                    control={
+                      <Checkbox
+                        checked={
+                          (form.permissionBitmask & PERMISSIONS[key]) ===
+                          PERMISSIONS[key]
+                        }
+                        onChange={() => togglePermission(PERMISSIONS[key])}
+                      />
+                    }
+                    label={PERMISSION_LABELS[key]}
+                  />
+                ))}
+              </FormGroup>
+            </Stack>
             {formError ? <Alert severity="warning">{formError}</Alert> : null}
           </Stack>
         </DialogContent>

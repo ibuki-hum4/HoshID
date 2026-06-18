@@ -51,7 +51,7 @@ export default function OidcAuthorizeClientPage() {
         .catch(() => null)) as ConsentResponse | null;
 
       if (!response.ok) {
-        throw new Error(payload?.error || "Consent request failed.");
+        throw new Error(payload?.error || "同意の処理に失敗しました。");
       }
 
       if (payload?.url) {
@@ -62,7 +62,7 @@ export default function OidcAuthorizeClientPage() {
       router.replace("/");
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "Consent request failed.",
+        caught instanceof Error ? caught.message : "同意の処理に失敗しました。",
       );
     } finally {
       setLoading(false);
@@ -71,19 +71,34 @@ export default function OidcAuthorizeClientPage() {
 
   return (
     <Box
-      sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 3 }}
+      component="main"
+      sx={{
+        minHeight: "100dvh",
+        display: "grid",
+        placeItems: "center",
+        p: 3,
+        backgroundColor: "background.default",
+        backgroundImage:
+          "radial-gradient(circle at top right, rgba(236,72,153,0.07), transparent 32%)",
+      }}
     >
       <Paper
-        sx={{ width: "min(720px, 100%)", p: 4, borderRadius: 3 }}
+        sx={{
+          width: "min(720px, 100%)",
+          p: 4,
+          borderRadius: 3,
+          border: "1px solid",
+          borderColor: "divider",
+        }}
         elevation={0}
       >
         <Stack spacing={3}>
           <Box>
             <Typography variant="overline" color="text.secondary">
-              OIDC Consent
+              認可リクエスト
             </Typography>
             <Typography variant="h4" sx={{ fontWeight: 800, mt: 1 }}>
-              {clientId || "Unknown client"}
+              {clientId || "不明なクライアント"}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
               このアプリに付与するスコープを確認してください。
@@ -109,14 +124,14 @@ export default function OidcAuthorizeClientPage() {
               onClick={() => submit(false)}
               disabled={loading}
             >
-              Deny
+              拒否する
             </Button>
             <Button
               variant="contained"
               onClick={() => submit(true)}
               disabled={loading}
             >
-              {loading ? "Processing..." : "Allow"}
+              {loading ? "処理中..." : "許可する"}
             </Button>
           </Stack>
         </Stack>

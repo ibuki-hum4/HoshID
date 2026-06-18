@@ -23,7 +23,7 @@ export default function SignUpPage() {
           subtitle="新しい HoshID アカウントを作成します。"
         >
           <Typography variant="body2" color="text.secondary">
-            Loading...
+            読み込み中...
           </Typography>
         </AuthShell>
       }

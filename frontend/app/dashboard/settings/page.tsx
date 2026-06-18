@@ -149,7 +149,7 @@ export default function SettingsPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        title="Personal settings"
+        title="個人設定"
         subtitle="生年月日、メール認証、パスワード再設定を管理します。"
       />
 
@@ -169,29 +169,30 @@ export default function SettingsPage() {
         <Stack spacing={3}>
           <Box>
             <Typography variant="subtitle2" color="text.secondary">
-              Account
+              アカウント
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 700, mt: 1 }}>
-              {sessionUser?.email || "Not loaded"}
+              {sessionUser?.email || "未読み込み"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               UUID: {sessionUser?.uuid || sessionUser?.id || "-"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Email verified: {sessionUser?.emailVerified ? "yes" : "no"}
+              メール確認: {sessionUser?.emailVerified ? "済み" : "未確認"}
             </Typography>
           </Box>
 
           <Stack spacing={2}>
             <Typography variant="overline" color="text.secondary">
-              Birth date
+              生年月日
             </Typography>
             <TextField
-              label="Birthday"
+              label="生年月日"
               type="date"
               value={birthday}
               onChange={(event) => setBirthday(event.target.value)}
               disabled={birthdayLocked}
+              slotProps={{ inputLabel: { shrink: true } }}
               helperText={
                 birthdayLocked
                   ? "一度設定したら変更できません。"
@@ -206,7 +207,7 @@ export default function SettingsPage() {
                 disabled={savingBirthday || sessionLoading}
                 sx={{ alignSelf: "flex-start" }}
               >
-                {savingBirthday ? "保存中..." : "Save birthday"}
+                {savingBirthday ? "保存中..." : "生年月日を保存"}
               </Button>
             ) : null}
             {birthdayLocked ? (
@@ -216,7 +217,7 @@ export default function SettingsPage() {
 
           <Stack spacing={2}>
             <Typography variant="overline" color="text.secondary">
-              Security
+              セキュリティ
             </Typography>
             <Button
               variant="contained"
@@ -229,8 +230,8 @@ export default function SettingsPage() {
               sx={{ alignSelf: "flex-start" }}
             >
               {sessionUser?.emailVerified
-                ? "Email verified"
-                : "Send verification email"}
+                ? "メール確認済み"
+                : "確認メールを送信"}
             </Button>
             <Button
               variant="outlined"
@@ -238,7 +239,7 @@ export default function SettingsPage() {
               disabled={securityLoading || sessionLoading}
               sx={{ alignSelf: "flex-start" }}
             >
-              Send password reset email
+              パスワード再設定メールを送信
             </Button>
           </Stack>
         </Stack>

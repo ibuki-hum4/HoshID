@@ -57,10 +57,15 @@ export default function DashboardGuard({ children }: DashboardGuardProps) {
 
   if (checking) {
     return (
-      <Box sx={{ py: 10, textAlign: "center" }}>
-        <CircularProgress size={28} />
+      // biome-ignore lint/a11y/useSemanticElements: role="status" is the WAI-ARIA loading-indicator pattern; <output> is for calculated form results, not loading state.
+      <Box
+        role="status"
+        aria-live="polite"
+        sx={{ py: 10, textAlign: "center" }}
+      >
+        <CircularProgress size={28} aria-hidden="true" />
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          Checking session...
+          セッションを確認しています...
         </Typography>
       </Box>
     );

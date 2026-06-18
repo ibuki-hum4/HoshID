@@ -69,7 +69,7 @@ const socialOptions: SocialOption[] = [
   },
   {
     key: "websiteUrl",
-    label: "Website",
+    label: "ウェブサイト",
     helperText: "個人サイトやポートフォリオ",
     placeholder: "https://example.com",
     icon: FaLink,
@@ -237,7 +237,7 @@ export default function ProfilePage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        title="Profile"
+        title="プロフィール"
         subtitle="ニックネームとSNSリンクを管理します。"
       />
 
@@ -257,13 +257,13 @@ export default function ProfilePage() {
         <Stack spacing={3}>
           <Box>
             <Typography variant="subtitle2" color="text.secondary">
-              Account
+              アカウント
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 800, mt: 1 }}>
-              {sessionUser?.customId || sessionUser?.email || "Not loaded"}
+              {sessionUser?.customId || sessionUser?.email || "未読み込み"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Mail: {sessionUser?.email || "-"}
+              メール: {sessionUser?.email || "-"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               UUID: {sessionUser?.uuid || "-"}
@@ -272,7 +272,7 @@ export default function ProfilePage() {
 
           <Stack spacing={2}>
             <TextField
-              label="Nickname"
+              label="ニックネーム"
               value={form.nickname}
               onChange={updateField("nickname")}
               helperText="画面に表示する名前"
@@ -289,7 +289,7 @@ export default function ProfilePage() {
                 }}
               >
                 <Typography variant="subtitle2" color="text.secondary">
-                  SNS / Links
+                  SNS / リンク
                 </Typography>
                 <Button
                   size="small"
@@ -298,7 +298,7 @@ export default function ProfilePage() {
                   onClick={addSocialRow}
                   disabled={socialRows.length >= socialOptions.length}
                 >
-                  Add
+                  追加
                 </Button>
               </Stack>
 
@@ -336,7 +336,7 @@ export default function ProfilePage() {
 
                     <TextField
                       select
-                      label="Service"
+                      label="サービス"
                       value={row.platform}
                       onChange={updateSocialPlatform(row.id)}
                       sx={{ minWidth: { xs: "100%", md: 180 } }}
@@ -387,7 +387,7 @@ export default function ProfilePage() {
             disabled={saving || sessionLoading}
             sx={{ alignSelf: "flex-start" }}
           >
-            {saving ? "保存中..." : "Save profile"}
+            {saving ? "保存中..." : "プロフィールを保存"}
           </Button>
         </Stack>
       </Paper>

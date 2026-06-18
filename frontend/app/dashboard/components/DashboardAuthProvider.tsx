@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 
+import { hasPermissionBit } from "@/src/features/rbac/permissions";
+
 import { DEFAULT_AUTH_ORIGIN, readErrorMessage } from "../lib/http";
 import { useStoredState } from "../lib/storage";
 
@@ -30,6 +32,8 @@ type DashboardAuthContextValue = {
   status: string;
   authToken: string;
   isAdmin: boolean;
+  permissions: number;
+  hasPermission: (bit: number) => boolean;
 };
 
 const DashboardAuthContext = createContext<DashboardAuthContextValue | null>(
@@ -48,6 +52,7 @@ export function DashboardAuthProvider({
   const [sessionRole, setSessionRole] = useState("");
   const [sessionStatus, setSessionStatus] = useState("");
   const [dashboardToken, setDashboardToken] = useState("");
+  const [permissions, setPermissions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -61,6 +66,7 @@ export function DashboardAuthProvider({
       setSessionRole("");
       setSessionStatus("");
       setDashboardToken("");
+      setPermissions(0);
 
       try {
         const sessionResponse = await fetch(
@@ -101,6 +107,7 @@ export function DashboardAuthProvider({
           token?: string;
           role?: string;
           status?: string;
+          permissions?: number;
         };
 
         if (active) {
@@ -112,6 +119,7 @@ export function DashboardAuthProvider({
           setSessionRole(tokenPayload.role ?? user.role ?? "");
           setSessionStatus(tokenPayload.status ?? user.status ?? "");
           setDashboardToken(tokenPayload.token ?? "");
+          setPermissions(tokenPayload.permissions ?? 0);
           setLoading(false);
         }
       } catch (caught) {
@@ -146,6 +154,9 @@ export function DashboardAuthProvider({
         status,
         authToken: dashboardToken,
         isAdmin: role === "admin" && status === "active",
+        permissions,
+        hasPermission: (bit: number) =>
+          status === "active" && hasPermissionBit(permissions, bit),
       }}
     >
       {children}

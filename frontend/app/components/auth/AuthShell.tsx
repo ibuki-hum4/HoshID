@@ -25,14 +25,16 @@ export default function AuthShell({
 }: AuthShellProps) {
   return (
     <Box
+      component="main"
       sx={{
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",
         py: { xs: 3, md: 5 },
         px: 2,
-        background:
-          "linear-gradient(180deg, rgba(253, 242, 248, 0.96) 0%, rgba(252, 231, 243, 1) 100%)",
+        backgroundColor: "background.default",
+        backgroundImage:
+          "radial-gradient(circle at top right, rgba(236,72,153,0.07), transparent 32%)",
       }}
     >
       <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
@@ -80,7 +82,8 @@ export default function AuthShell({
               borderRadius: 3,
               p: { xs: 3, md: 4 },
               backgroundColor: "background.paper",
-              border: "1px solid #f6d7e6",
+              border: "1px solid",
+              borderColor: "divider",
             }}
           >
             <Box sx={{ position: "relative" }}>
@@ -91,7 +94,7 @@ export default function AuthShell({
                     color="text.secondary"
                     sx={{ letterSpacing: 2.5 }}
                   >
-                    AUTH PORTAL
+                    認証ポータル
                   </Typography>
                   <Typography
                     variant="h4"

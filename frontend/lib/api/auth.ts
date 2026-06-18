@@ -3,6 +3,12 @@ import "server-only";
 import type { User } from "@prisma/client";
 import { jwtVerify, SignJWT } from "jose";
 
+import {
+  ALL_PERMISSIONS,
+  hasAnyPermissionBit,
+  hasPermissionBit,
+} from "@/src/features/rbac/permissions";
+
 export interface AuthUser
   extends Pick<User, "id" | "email" | "role" | "status"> {}
 
@@ -68,6 +74,49 @@ export async function getUserFromRequest(
 export function requireAdmin(user: AuthUser): string | null {
   if (user.role !== "admin") {
     return "admin role required";
+  }
+  return null;
+}
+
+/**
+ * Resolves a user's effective permission bitmask via their assigned Role
+ * (matched by `Role.customId === user.role`). The literal "admin" role
+ * always resolves to every permission, even if its DB row is missing, so
+ * the original superuser role can never be locked out by a bad migration
+ * or a deleted/corrupted role row.
+ */
+export async function getPermissionBitmask(user: AuthUser): Promise<number> {
+  if (user.role === "admin") {
+    return ALL_PERMISSIONS;
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+  const role = await prisma.role.findUnique({
+    where: { customId: user.role },
+    select: { permissionBitmask: true },
+  });
+
+  return role?.permissionBitmask ?? 0;
+}
+
+export async function requirePermission(
+  user: AuthUser,
+  bit: number,
+): Promise<string | null> {
+  const bitmask = await getPermissionBitmask(user);
+  if (!hasPermissionBit(bitmask, bit)) {
+    return "insufficient permissions";
+  }
+  return null;
+}
+
+export async function requireAnyPermission(
+  user: AuthUser,
+  bits: number[],
+): Promise<string | null> {
+  const bitmask = await getPermissionBitmask(user);
+  if (!hasAnyPermissionBit(bitmask, bits)) {
+    return "insufficient permissions";
   }
   return null;
 }

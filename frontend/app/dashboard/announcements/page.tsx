@@ -46,6 +46,19 @@ function statusColor(status: string) {
   }
 }
 
+function statusLabel(status: string) {
+  switch (status) {
+    case "active":
+      return "公開中";
+    case "inactive":
+      return "非公開";
+    case "archived":
+      return "アーカイブ済み";
+    default:
+      return status || "-";
+  }
+}
+
 export default function AnnouncementsPage() {
   const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
   const { authToken, loading: sessionLoading } = useDashboardAuth();
@@ -60,17 +73,17 @@ export default function AnnouncementsPage() {
   const columns: GridColDef<Announcement>[] = [
     {
       field: "title",
-      headerName: "Title",
+      headerName: "タイトル",
       flex: 1.2,
       minWidth: 260,
     },
     {
       field: "status",
-      headerName: "Status",
+      headerName: "ステータス",
       width: 150,
       renderCell: (params) => (
         <Chip
-          label={String(params.value || "-")}
+          label={statusLabel(String(params.value || ""))}
           color={statusColor(String(params.value || ""))}
           size="small"
           variant="outlined"
@@ -79,7 +92,7 @@ export default function AnnouncementsPage() {
     },
     {
       field: "updated_at",
-      headerName: "Updated",
+      headerName: "更新日時",
       flex: 0.8,
       minWidth: 180,
       valueGetter: (_, row) => row.updated_at || row.created_at || "",
@@ -128,7 +141,7 @@ export default function AnnouncementsPage() {
       return;
     }
     if (!title.trim()) {
-      setError("Title is required.");
+      setError("タイトルを入力してください。");
       return;
     }
     setSaving(true);
@@ -158,19 +171,19 @@ export default function AnnouncementsPage() {
   return (
     <Stack spacing={4}>
       <PageHeader
-        title="Announcements"
-        subtitle="Manage the broadcast feed used by the protected API."
+        title="アナウンス"
+        subtitle="保護API向けに配信するお知らせフィードを管理します。"
       />
 
       {error ? <Alert severity="warning">{error}</Alert> : null}
 
       <Stack spacing={2}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          New announcement
+          新しいアナウンス
         </Typography>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
           <TextField
-            label="Title"
+            label="タイトル"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             fullWidth
@@ -178,7 +191,7 @@ export default function AnnouncementsPage() {
           />
           <TextField
             select
-            label="Status"
+            label="ステータス"
             value={status}
             onChange={(event) => setStatus(event.target.value)}
             sx={{ minWidth: 160 }}
@@ -186,7 +199,7 @@ export default function AnnouncementsPage() {
           >
             {statusOptions.map((option) => (
               <MenuItem key={option} value={option}>
-                {option}
+                {statusLabel(option)}
               </MenuItem>
             ))}
           </TextField>
@@ -196,12 +209,12 @@ export default function AnnouncementsPage() {
             disabled={!adminMode || saving}
             sx={{ minWidth: 160 }}
           >
-            {saving ? "Saving..." : "Create"}
+            {saving ? "保存中..." : "作成"}
           </Button>
         </Stack>
         {!adminMode ? (
           <Alert severity="info">
-            Admin permissions are required to create announcements.
+            アナウンスを作成するには管理権限が必要です。
           </Alert>
         ) : null}
       </Stack>
@@ -210,10 +223,10 @@ export default function AnnouncementsPage() {
 
       <Box>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-          Recent announcements
+          最近のアナウンス
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Sort and paginate to browse previously published announcements.
+          並べ替えやページ送りで、これまでに公開したアナウンスを確認できます。
         </Typography>
         <DataGrid
           autoHeight
@@ -230,7 +243,7 @@ export default function AnnouncementsPage() {
         />
         {!loading && announcements.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-            No announcements yet.
+            まだアナウンスはありません。
           </Typography>
         ) : null}
       </Box>

@@ -1,4 +1,4 @@
-import { issueDashboardToken } from "@/lib/api/auth";
+import { getPermissionBitmask, issueDashboardToken } from "@/lib/api/auth";
 import { ensureApiUser } from "@/lib/api/db";
 import { jsonError, jsonOk, jsonUnauthorized } from "@/lib/api/responses";
 import { auth } from "@/lib/auth";
@@ -14,6 +14,7 @@ export async function GET(request: Request) {
 
   try {
     const apiUser = await ensureApiUser(user.id, user.email);
+    const permissions = await getPermissionBitmask(apiUser);
     const token = await issueDashboardToken({
       id: apiUser.id,
       email: apiUser.email,
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
       token,
       role: apiUser.role,
       status: apiUser.status,
+      permissions,
     });
   } catch (_err) {
     return jsonError("failed to issue dashboard token", 500);

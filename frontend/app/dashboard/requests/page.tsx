@@ -15,6 +15,7 @@ import {
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { PERMISSIONS } from "@/src/features/rbac/permissions";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
 import PageHeader from "../components/PageHeader";
@@ -38,7 +39,12 @@ type MemberRequest = {
 export default function RequestsPage() {
   const router = useRouter();
   const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
-  const { authToken, isAdmin, loading: sessionLoading } = useDashboardAuth();
+  const {
+    authToken,
+    loading: sessionLoading,
+    hasPermission,
+  } = useDashboardAuth();
+  const canManage = hasPermission(PERMISSIONS.MANAGE_REQUESTS);
   const [requests, setRequests] = useState<MemberRequest[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -53,7 +59,7 @@ export default function RequestsPage() {
   const [approveError, setApproveError] = useState("");
 
   const load = useCallback(async () => {
-    if (sessionLoading || !isAdmin || !authToken) {
+    if (sessionLoading || !canManage || !authToken) {
       return;
     }
     setError("");
@@ -71,18 +77,18 @@ export default function RequestsPage() {
     const payload = (await response.json()) as { requests: MemberRequest[] };
     setRequests(payload.requests ?? []);
     setLoading(false);
-  }, [apiOrigin, authToken, isAdmin, sessionLoading]);
+  }, [apiOrigin, authToken, canManage, sessionLoading]);
 
   useEffect(() => {
-    if (!sessionLoading && !isAdmin) {
+    if (!sessionLoading && !canManage) {
       router.replace("/dashboard");
       return;
     }
     void load();
-  }, [isAdmin, router, sessionLoading, load]);
+  }, [canManage, router, sessionLoading, load]);
 
   const handleReject = async (id: string) => {
-    if (sessionLoading || !isAdmin || !authToken) {
+    if (sessionLoading || !canManage || !authToken) {
       return;
     }
     setLoadingId(id);
@@ -125,7 +131,7 @@ export default function RequestsPage() {
   };
 
   const submitApproval = async () => {
-    if (!approveTarget || sessionLoading || !isAdmin || !authToken) {
+    if (!approveTarget || sessionLoading || !canManage || !authToken) {
       return;
     }
 
@@ -175,35 +181,35 @@ export default function RequestsPage() {
   const columns: GridColDef<MemberRequest>[] = [
     {
       field: "applicantEmail",
-      headerName: "Applicant Email",
+      headerName: "申請者のメール",
       flex: 1.1,
       minWidth: 240,
     },
     {
       field: "applicantName",
-      headerName: "Applicant Name",
+      headerName: "申請者の名前",
       flex: 0.8,
       minWidth: 160,
       valueGetter: (_, row) => row.applicantName || "-",
     },
     {
       field: "requestedUsername",
-      headerName: "Requested Custom ID",
+      headerName: "希望カスタムID",
       flex: 0.8,
       minWidth: 180,
       valueGetter: (_, row) => row.requestedUsername || "-",
     },
     {
       field: "status",
-      headerName: "Status",
+      headerName: "ステータス",
       width: 150,
       renderCell: () => (
-        <Chip label="pending" size="small" variant="outlined" color="warning" />
+        <Chip label="保留中" size="small" variant="outlined" color="warning" />
       ),
     },
     {
       field: "createdAt",
-      headerName: "Requested",
+      headerName: "申請日時",
       flex: 0.9,
       minWidth: 180,
       valueGetter: (_, row) => row.createdAt || "",
@@ -211,7 +217,7 @@ export default function RequestsPage() {
     },
     {
       field: "actions",
-      headerName: "Action",
+      headerName: "操作",
       minWidth: 220,
       sortable: false,
       filterable: false,
@@ -223,7 +229,7 @@ export default function RequestsPage() {
             onClick={() => openApproveDialog(params.row)}
             disabled={loadingId === params.row.id}
           >
-            Approve
+            承認
           </Button>
           <Button
             size="small"
@@ -232,22 +238,22 @@ export default function RequestsPage() {
             onClick={() => handleReject(params.row.id)}
             disabled={loadingId === params.row.id}
           >
-            Reject
+            却下
           </Button>
         </Stack>
       ),
     },
   ];
 
-  if (sessionLoading || !isAdmin) {
+  if (sessionLoading || !canManage) {
     return null;
   }
 
   return (
     <Stack spacing={3}>
       <PageHeader
-        title="Requests"
-        subtitle="Approve or reject pending member applications."
+        title="リクエスト"
+        subtitle="保留中のメンバー申請を承認・却下します。"
       />
 
       {error ? <Alert severity="warning">{error}</Alert> : null}
@@ -272,7 +278,7 @@ export default function RequestsPage() {
 
       {!loading && requests.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No pending requests.
+          保留中のリクエストはありません。
         </Typography>
       ) : null}
 
@@ -282,7 +288,7 @@ export default function RequestsPage() {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>Approve request</DialogTitle>
+        <DialogTitle>リクエストを承認</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2}>
             <Typography variant="body2" color="text.secondary">
@@ -326,14 +332,14 @@ export default function RequestsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeApproveDialog} color="inherit">
-            Cancel
+            キャンセル
           </Button>
           <Button
             variant="contained"
             onClick={submitApproval}
             disabled={loadingId === approveTarget?.id}
           >
-            {loadingId === approveTarget?.id ? "送信中..." : "Approve & Send"}
+            {loadingId === approveTarget?.id ? "送信中..." : "承認して送信"}
           </Button>
         </DialogActions>
       </Dialog>

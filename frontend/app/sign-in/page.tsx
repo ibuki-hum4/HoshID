@@ -28,7 +28,7 @@ export default function SignInPage() {
           subtitle="HoshID にログインして続行します。"
         >
           <Typography variant="body2" color="text.secondary">
-            Loading...
+            読み込み中...
           </Typography>
         </AuthShell>
       }

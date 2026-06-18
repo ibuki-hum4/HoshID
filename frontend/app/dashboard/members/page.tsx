@@ -23,6 +23,7 @@ import {
 } from "@mui/x-data-grid";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { PERMISSIONS } from "@/src/features/rbac/permissions";
 import { useDashboardAuth } from "../components/DashboardAuthProvider";
 import { dashboardGridSx } from "../components/dashboardGridStyles";
 import PageHeader from "../components/PageHeader";
@@ -45,9 +46,13 @@ type Member = {
   updatedAt: string;
 };
 
+type RoleOption = {
+  customId: string;
+  name: string;
+};
+
 const statusOptions = ["all", "active", "suspended", "archived"];
 const memberStatusOptions: string[] = ["active", "suspended", "archived"];
-const memberRoleOptions: string[] = ["user", "admin"];
 
 function statusColor(status?: string) {
   switch (status) {
@@ -65,13 +70,15 @@ function statusColor(status?: string) {
 function statusLabel(status?: string) {
   switch (status) {
     case "active":
-      return "Active";
+      return "有効";
     case "suspended":
-      return "Suspended";
+      return "停止中";
     case "archived":
-      return "Archived";
+      return "アーカイブ済み";
+    case "all":
+      return "すべて";
     default:
-      return String(status ?? "active");
+      return String(status ?? "有効");
   }
 }
 
@@ -102,10 +109,18 @@ function areMemberRowsEqual(left: Member, right: Member) {
 export default function MembersPage() {
   const router = useRouter();
   const [apiOrigin] = useStoredState("hoshid.apiOrigin", DEFAULT_API_ORIGIN);
-  const { authToken, loading: sessionLoading } = useDashboardAuth();
+  const {
+    authToken,
+    loading: sessionLoading,
+    hasPermission,
+  } = useDashboardAuth();
+  const canAssignRoles = hasPermission(PERMISSIONS.ASSIGN_ROLES);
+  const canViewRoles =
+    canAssignRoles || hasPermission(PERMISSIONS.MANAGE_ROLES);
   const [statusFilter, setStatusFilter] = useState("all");
   const [members, setMembers] = useState<Member[]>([]);
   const [draftMembers, setDraftMembers] = useState<Member[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -209,6 +224,16 @@ export default function MembersPage() {
     }
   };
 
+  const roleValueOptions =
+    roleOptions.length > 0
+      ? roleOptions.map((option) => ({
+          value: option.customId,
+          label: option.name,
+        }))
+      : Array.from(new Set(members.map((member) => member.role || "user"))).map(
+          (value) => ({ value, label: value }),
+        );
+
   const columns: GridColDef<Member>[] = [
     {
       field: "actions",
@@ -283,10 +308,10 @@ export default function MembersPage() {
     {
       field: "role",
       headerName: "権限",
-      width: 120,
-      editable: true,
+      width: 140,
+      editable: canAssignRoles,
       type: "singleSelect",
-      valueOptions: [...memberRoleOptions],
+      valueOptions: roleValueOptions,
       valueGetter: (_, row) => row.role || "user",
       renderCell: (params) => (
         <Chip
@@ -357,6 +382,24 @@ export default function MembersPage() {
     void load();
   }, [apiOrigin, authToken, sessionLoading, statusFilter]);
 
+  useEffect(() => {
+    const loadRoles = async () => {
+      if (sessionLoading || !authToken || !canViewRoles) {
+        return;
+      }
+      const response = await fetch(`${apiOrigin}/api/admin/roles`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!response.ok) {
+        return;
+      }
+      const payload = (await response.json()) as { roles: RoleOption[] };
+      setRoleOptions(payload.roles ?? []);
+    };
+
+    void loadRoles();
+  }, [apiOrigin, authToken, canViewRoles, sessionLoading]);
+
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -385,7 +428,7 @@ export default function MembersPage() {
           >
             {statusOptions.map((option) => (
               <MenuItem key={option} value={option}>
-                {option}
+                {statusLabel(option)}
               </MenuItem>
             ))}
           </TextField>
@@ -396,10 +439,7 @@ export default function MembersPage() {
 
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Chip label={`合計 ${members.length} 件`} variant="outlined" />
-          <Chip
-            label={statusFilter === "all" ? "全ステータス" : statusFilter}
-            variant="outlined"
-          />
+          <Chip label={statusLabel(statusFilter)} variant="outlined" />
           {hasDraftChanges ? (
             <Chip label="変更あり" color="warning" variant="outlined" />
           ) : null}

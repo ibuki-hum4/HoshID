@@ -47,6 +47,7 @@ model Role {
   customId          String   @unique @map("custom_id")
   description       String   @default("")
   permissionBitmask Int      @default(0) @map("permission_bitmask")
+  isProtected       Boolean  @default(false) @map("is_protected")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

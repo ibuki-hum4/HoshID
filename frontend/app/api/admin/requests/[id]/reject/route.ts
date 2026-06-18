@@ -1,4 +1,4 @@
-import { getUserFromRequest, requireAdmin } from "@/lib/api/auth";
+import { getUserFromRequest, requirePermission } from "@/lib/api/auth";
 import { getMemberRequestById, updateMemberRequest } from "@/lib/api/db";
 import {
   jsonError,
@@ -7,6 +7,7 @@ import {
   jsonOk,
   jsonUnauthorized,
 } from "@/lib/api/responses";
+import { PERMISSIONS } from "@/src/features/rbac/permissions";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function POST(
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(adminUser);
+  const error = await requirePermission(adminUser, PERMISSIONS.MANAGE_REQUESTS);
   if (error) {
     return jsonForbidden(error);
   }

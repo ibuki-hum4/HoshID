@@ -1,6 +1,6 @@
 import { hashPassword } from "better-auth/crypto";
 
-import { getUserFromRequest, requireAdmin } from "@/lib/api/auth";
+import { getUserFromRequest, requirePermission } from "@/lib/api/auth";
 import { getMemberRequestById } from "@/lib/api/db";
 import { isPrismaErrorCode } from "@/lib/api/prisma-errors";
 import {
@@ -14,6 +14,7 @@ import {
 import { sendApprovalCredentialsEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { normalizeUsername, validateUsernameFormat } from "@/lib/username";
+import { PERMISSIONS } from "@/src/features/rbac/permissions";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,7 @@ export async function POST(
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(adminUser);
+  const error = await requirePermission(adminUser, PERMISSIONS.MANAGE_REQUESTS);
   if (error) {
     return jsonForbidden(error);
   }

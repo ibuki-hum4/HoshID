@@ -19,8 +19,9 @@ export default function MetricCard({
       elevation={0}
       sx={{
         p: 3,
-        borderRadius: 1,
-        border: "1px solid #f6d7e6",
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider",
         background: "background.paper",
         display: "grid",
         gap: 1.5,

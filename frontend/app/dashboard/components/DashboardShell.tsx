@@ -36,6 +36,7 @@ import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { PERMISSIONS } from "@/src/features/rbac/permissions";
 import { DEFAULT_AUTH_ORIGIN } from "../lib/http";
 import { useDashboardAuth } from "./DashboardAuthProvider";
 
@@ -43,58 +44,60 @@ type NavItem = {
   label: string;
   href: string;
   caption: string;
-  adminOnly?: boolean;
+  requiredPermissions?: number[];
   icon: ReactNode;
 };
 
 const navItems: NavItem[] = [
   {
-    label: "Overview",
+    label: "ホーム",
     href: "/dashboard",
-    caption: "Snapshot of the workspace",
+    caption: "ワークスペースの概要",
     icon: <SpaceDashboardOutlinedIcon fontSize="small" />,
   },
   {
-    label: "Announcements",
+    label: "アナウンス",
     href: "/dashboard/announcements",
-    caption: "Broadcast updates",
+    caption: "お知らせの配信",
     icon: <RssFeedOutlinedIcon fontSize="small" />,
   },
   {
-    label: "Members",
+    label: "メンバー",
     href: "/dashboard/members",
-    caption: "Directory and status",
+    caption: "一覧とステータス",
     icon: <PeopleAltOutlinedIcon fontSize="small" />,
   },
   {
-    label: "Requests",
+    label: "リクエスト",
     href: "/dashboard/requests",
-    caption: "Approve new members",
-    adminOnly: true,
+    caption: "新規メンバーの承認",
+    requiredPermissions: [PERMISSIONS.MANAGE_REQUESTS],
     icon: <TaskAltOutlinedIcon fontSize="small" />,
   },
   {
-    label: "Applications",
+    label: "アプリケーション",
     href: "/dashboard/applications",
-    caption: "Intake pipeline",
+    caption: "OAuth / OIDC クライアント",
+    requiredPermissions: [PERMISSIONS.MANAGE_APPLICATIONS],
     icon: <NoteAltOutlinedIcon fontSize="small" />,
   },
   {
-    label: "Roles",
+    label: "ロール",
     href: "/dashboard/roles",
-    caption: "Access control",
+    caption: "アクセス制御",
+    requiredPermissions: [PERMISSIONS.MANAGE_ROLES, PERMISSIONS.ASSIGN_ROLES],
     icon: <ManageAccountsOutlinedIcon fontSize="small" />,
   },
   {
-    label: "Profile",
+    label: "プロフィール",
     href: "/dashboard/profile",
-    caption: "Your account",
+    caption: "あなたのアカウント",
     icon: <PersonOutlinedIcon fontSize="small" />,
   },
   {
-    label: "Settings",
+    label: "設定",
     href: "/dashboard/settings",
-    caption: "Personal settings",
+    caption: "個人設定",
     icon: <TuneIcon fontSize="small" />,
   },
 ];
@@ -109,7 +112,7 @@ const MINI_DRAWER_WIDTH = 72;
 export default function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
   const theme = useTheme();
-  const { isAdmin, sessionUser } = useDashboardAuth();
+  const { isAdmin, sessionUser, hasPermission } = useDashboardAuth();
   const [open, setOpen] = useState(false);
   const drawerWidth = open ? DRAWER_WIDTH : MINI_DRAWER_WIDTH;
   const router = useRouter();
@@ -135,14 +138,19 @@ export default function DashboardShell({ children }: DashboardShellProps) {
   };
 
   const visibleItems = useMemo(
-    () => (isAdmin ? navItems : navItems.filter((item) => !item.adminOnly)),
-    [isAdmin],
+    () =>
+      navItems.filter(
+        (item) =>
+          !item.requiredPermissions ||
+          item.requiredPermissions.some((bit) => hasPermission(bit)),
+      ),
+    [hasPermission],
   );
 
   const currentSection =
     visibleItems.find(
       (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-    )?.label ?? "Overview";
+    )?.label ?? "ホーム";
 
   return (
     <Box
@@ -198,10 +206,16 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             color="text.secondary"
             sx={{ display: { xs: "none", sm: "block" } }}
           >
-            {isAdmin ? "Admin workspace" : "Member workspace"}
+            {isAdmin ? "管理者ワークスペース" : "メンバーワークスペース"}
           </Typography>
           <Tooltip title="アカウントメニュー">
-            <IconButton onClick={handleMenuOpen} sx={{ ml: 1 }} size="small">
+            <IconButton
+              onClick={handleMenuOpen}
+              sx={{ ml: 1 }}
+              size="small"
+              aria-label="アカウントメニュー"
+              aria-haspopup="menu"
+            >
               <Avatar sx={{ width: 32, height: 32 }}>
                 {sessionUser?.nickname?.[0]?.toUpperCase() ??
                   sessionUser?.email?.[0]?.toUpperCase() ??
@@ -302,7 +316,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               variant="subtitle1"
               sx={{ fontWeight: 800, lineHeight: 1 }}
             >
-              Dashboard
+              ダッシュボード
             </Typography>
           </Stack>
         </Toolbar>
@@ -320,6 +334,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           }}
         >
           <List
+            component="nav"
+            aria-label="メインナビゲーション"
             disablePadding
             sx={{ display: "grid", gap: 0.5, overflowY: "auto", flexGrow: 1 }}
           >
@@ -340,6 +356,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                     component={NextLink}
                     href={item.href}
                     selected={active}
+                    aria-current={active ? "page" : undefined}
                     sx={{
                       minHeight: 48,
                       justifyContent: open ? "initial" : "center",
@@ -404,10 +421,10 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               color="text.secondary"
               sx={{ display: "block", mb: 0.5 }}
             >
-              Current access
+              現在のアクセス権限
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
-              {isAdmin ? "Admin" : "Member"}
+              {isAdmin ? "管理者" : "メンバー"}
             </Typography>
           </Box>
         </Box>

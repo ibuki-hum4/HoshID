@@ -1,8 +1,13 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
-import { getUserFromRequest, requireAdmin } from "@/lib/api/auth";
-import { getApiUserById, updateApiUser } from "@/lib/api/db";
+import { getUserFromRequest, requirePermission } from "@/lib/api/auth";
+import {
+  countActiveUsersWithPermission,
+  getApiUserById,
+  getRoleByCustomId,
+  updateApiUser,
+} from "@/lib/api/db";
 import { isPrismaErrorCode } from "@/lib/api/prisma-errors";
 import {
   jsonConflict,
@@ -12,13 +17,14 @@ import {
   jsonOk,
   jsonUnauthorized,
 } from "@/lib/api/responses";
+import { PERMISSIONS } from "@/src/features/rbac/permissions";
 
 export const runtime = "nodejs";
 
 const updateUserSchema = z.object({
   displayName: z.string().trim().max(200).optional(),
   customId: z.string().trim().max(100).optional(),
-  role: z.enum(["user", "admin"]).optional(),
+  role: z.string().trim().min(1).max(100).optional(),
   status: z.enum(["active", "suspended", "archived"]).optional(),
 });
 
@@ -31,7 +37,7 @@ export async function GET(
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(user);
+  const error = await requirePermission(user, PERMISSIONS.MANAGE_USERS);
   if (error) {
     return jsonForbidden(error);
   }
@@ -59,17 +65,6 @@ export async function PATCH(
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(user);
-  if (error) {
-    return jsonForbidden(error);
-  }
-
-  const params = await context.params;
-  const id = params.id ?? "";
-  if (!id) {
-    return jsonNotFound("user not found");
-  }
-
   let payload: unknown;
   try {
     payload = await request.json();
@@ -83,6 +78,68 @@ export async function PATCH(
   }
 
   const { displayName, customId, role, status } = parsed.data;
+
+  // Changing what a user is allowed to do (role) is a more sensitive
+  // action than editing their profile fields, so it requires its own
+  // permission rather than riding along with MANAGE_USERS. A request that
+  // touches no recognized field still needs at least MANAGE_USERS so this
+  // route can't be used to probe user existence without any permission.
+  const requiredPermissions = [
+    ...(role !== undefined ? [PERMISSIONS.ASSIGN_ROLES] : []),
+    PERMISSIONS.MANAGE_USERS,
+  ];
+
+  const permissionError = await requireAllPermissions(
+    user,
+    requiredPermissions,
+  );
+  if (permissionError) {
+    return jsonForbidden(permissionError);
+  }
+
+  const params = await context.params;
+  const id = params.id ?? "";
+  if (!id) {
+    return jsonNotFound("user not found");
+  }
+
+  if (role !== undefined) {
+    const targetRole = await getRoleByCustomId(role);
+    if (!targetRole) {
+      return jsonError("unknown role", 400);
+    }
+  }
+
+  const target = await getApiUserById(id);
+  if (!target) {
+    return jsonNotFound("user not found");
+  }
+
+  const losesActiveAssignRoles =
+    target.status === "active" &&
+    ((status !== undefined && status !== "active") ||
+      (role !== undefined && role !== target.role));
+
+  if (losesActiveAssignRoles) {
+    const targetRole = await getRoleByCustomId(target.role);
+    const targetHadAssignRoles =
+      target.role === "admin" ||
+      ((targetRole?.permissionBitmask ?? 0) & PERMISSIONS.ASSIGN_ROLES) ===
+        PERMISSIONS.ASSIGN_ROLES;
+
+    if (targetHadAssignRoles) {
+      const remaining = await countActiveUsersWithPermission(
+        PERMISSIONS.ASSIGN_ROLES,
+        { excludeUserId: id },
+      );
+      if (remaining === 0) {
+        return jsonConflict(
+          "cannot update the last active user who can assign roles",
+        );
+      }
+    }
+  }
+
   const data = {
     ...(displayName !== undefined ? { displayUsername: displayName } : {}),
     ...(customId !== undefined ? { username: customId } : {}),
@@ -102,4 +159,17 @@ export async function PATCH(
     }
     throw caught;
   }
+}
+
+async function requireAllPermissions(
+  user: Parameters<typeof requirePermission>[0],
+  bits: number[],
+): Promise<string | null> {
+  for (const bit of bits) {
+    const error = await requirePermission(user, bit);
+    if (error) {
+      return error;
+    }
+  }
+  return null;
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getUserFromRequest, requireAdmin } from "@/lib/api/auth";
+import { getUserFromRequest, requirePermission } from "@/lib/api/auth";
 import {
   createAnnouncement,
   deleteAnnouncement,
@@ -14,6 +14,7 @@ import {
   jsonOk,
   jsonUnauthorized,
 } from "@/lib/api/responses";
+import { PERMISSIONS } from "@/src/features/rbac/permissions";
 
 export const runtime = "nodejs";
 
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(user);
+  const error = await requirePermission(user, PERMISSIONS.MANAGE_ANNOUNCEMENTS);
   if (error) {
     return jsonForbidden(error);
   }
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(user);
+  const error = await requirePermission(user, PERMISSIONS.MANAGE_ANNOUNCEMENTS);
   if (error) {
     return jsonForbidden(error);
   }
@@ -73,7 +74,7 @@ export async function PUT(request: Request) {
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(user);
+  const error = await requirePermission(user, PERMISSIONS.MANAGE_ANNOUNCEMENTS);
   if (error) {
     return jsonForbidden(error);
   }
@@ -114,7 +115,7 @@ export async function DELETE(request: Request) {
     return jsonUnauthorized("invalid token");
   }
 
-  const error = requireAdmin(user);
+  const error = await requirePermission(user, PERMISSIONS.MANAGE_ANNOUNCEMENTS);
   if (error) {
     return jsonForbidden(error);
   }

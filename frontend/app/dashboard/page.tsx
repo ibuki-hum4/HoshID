@@ -152,37 +152,37 @@ export default function DashboardOverviewPage() {
   return (
     <Stack spacing={4}>
       <PageHeader
-        title="Overview"
-        subtitle="A quick look at announcements, members, and approvals."
+        title="ホーム"
+        subtitle="アナウンス・メンバー・承認状況をひと目で確認できます。"
         action={
           <Button
             component={NextLink}
             href="/dashboard/settings"
             variant="outlined"
           >
-            Connection settings
+            接続設定
           </Button>
         }
       />
 
       <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
         <MetricCard
-          label="Announcements"
+          label="アナウンス"
           value={loading ? "--" : String(announcements.length)}
-          helper="Published in the protected feed"
+          helper="保護されたフィードに公開済み"
         />
         {isAdmin ? (
           <MetricCard
-            label="Members"
+            label="メンバー"
             value={loading ? "--" : String(members.length)}
-            helper="Approved and pending accounts"
+            helper="承認済み・保留中のアカウント"
           />
         ) : null}
         {isAdmin ? (
           <MetricCard
-            label="Pending requests"
+            label="保留中のリクエスト"
             value={loading ? "--" : String(requests.length)}
-            helper="Need admin approval"
+            helper="管理者の承認待ち"
           />
         ) : null}
       </Stack>
@@ -206,13 +206,13 @@ export default function DashboardOverviewPage() {
         }}
       >
         <Typography variant="subtitle2" color="text.secondary">
-          Signed-in profile
+          サインイン中のプロフィール
         </Typography>
         <Typography variant="h6" sx={{ fontWeight: 700, mt: 1 }}>
-          {me ? me.email : "Not loaded"}
+          {me ? me.email : "未読み込み"}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Role: {me?.role || "-"} · Status: {me?.status || "-"}
+          権限: {me?.role || "-"} ・ ステータス: {me?.status || "-"}
         </Typography>
       </Box>
     </Stack>

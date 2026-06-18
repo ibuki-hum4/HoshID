@@ -16,7 +16,7 @@ export default function ResetPasswordTokenPage() {
           subtitle="新しいパスワードを設定します。"
         >
           <Typography variant="body2" color="text.secondary">
-            Loading...
+            読み込み中...
           </Typography>
         </AuthShell>
       }

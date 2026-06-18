@@ -44,7 +44,9 @@ export default function AccessTokenCard() {
         const payload = (await response.json().catch(() => null)) as {
           error?: string;
         } | null;
-        throw new Error(payload?.error || "Failed to load access token.");
+        throw new Error(
+          payload?.error || "アクセストークンの取得に失敗しました。",
+        );
       }
 
       const payload = (await response.json()) as AccessTokenResponse;
@@ -53,7 +55,7 @@ export default function AccessTokenCard() {
       setError(
         caught instanceof Error
           ? caught.message
-          : "Failed to load access token.",
+          : "アクセストークンの取得に失敗しました。",
       );
     } finally {
       setLoading(false);
@@ -83,7 +85,7 @@ export default function AccessTokenCard() {
         </Box>
 
         <TextField
-          label="Provider ID"
+          label="プロバイダーID"
           value={providerId}
           onChange={(event) => setProviderId(event.target.value)}
           helperText="例: google, github"

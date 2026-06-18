@@ -15,7 +15,8 @@ const notoSansJP = Noto_Sans_JP({
 
 export const metadata: Metadata = {
   title: "HOSHID",
-  description: "HOSHID member portal and identity management interface.",
+  description:
+    "HOSHID メンバーポータル・アイデンティティ管理インターフェース。",
 };
 
 export default function RootLayout({
