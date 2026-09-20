@@ -45,6 +45,9 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
+    // 申請直後はまだ pending なのでセッションを作れない。自動サインインを
+    // 有効にしたままだと申請の最後でセッション生成が拒否されて失敗する。
+    autoSignIn: false,
     // 既定は scrypt。Argon2id に差し替える。
     password: {
       hash: (password) => argon2Hash(password, ARGON2_OPTIONS),

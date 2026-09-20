@@ -169,7 +169,10 @@ compose.dev.yaml               dev 用 PostgreSQL（Podman）
 ## 規約
 
 - 依存は**完全固定**（キャレットを付けない）。認証基盤なので、意図しないマイナー更新で挙動が変わるのを避ける。`@types/*` だけは緩めてある。
-- UI は **shadcn/ui**。コンポーネント追加は `bunx shadcn@latest add <name>`。生成先は `components/ui/`。これらは自分のコードなので改変してよい。
+- UI は **shadcn/ui のみ**。コンポーネント追加は `bunx shadcn@latest add <name>`。生成先は `components/ui/`。これらは自分のコードなので改変してよい。
+- **UI ライブラリを追加しない。** 特に **MUI (`@mui/material`) は使用禁止**。他の UI キット（Chakra、Ant Design、Mantine 等）も同様。足りないものは shadcn/ui のコンポーネントを組み合わせるか、自分で書く。
+- **デザインの参考**: `docs/ui-reference/` にスクリーンショットを置いてある。角丸の大きいカード、淡い色味のトーナルサーフェス、アイコン付きのダイアログ、控えめなテキストボタン、塗りつぶしの検索フィールドといった**見た目の方向性**を参考にする。
+  これは**あくまで見た目の参考であり、Material 系のライブラリを入れるという意味ではない**。実装は Tailwind と shadcn/ui で再現する。
 - フォームは react-hook-form + zod（`@hookform/resolvers`）。
 - パッケージマネージャは **bun**。ランタイムは **Node**（`output: "standalone"` でコンテナ化）。
 - 日本語 UI。`lang="ja"`。
@@ -186,3 +189,4 @@ compose.dev.yaml               dev 用 PostgreSQL（Podman）
 ## 禁忌
 
 - コミットメッセージに `Co-Authored-By: Claude ...` を**絶対に入れない**。例外なし。
+- **MUI (`@mui/material`) を導入しない。** UI は shadcn/ui + Tailwind で完結させる。

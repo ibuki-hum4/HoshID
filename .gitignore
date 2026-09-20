@@ -40,3 +40,6 @@ Thumbs.db
 
 # misc
 *.pem
+
+# podman machine ssh on Windows drops its known_hosts write here
+NUL
