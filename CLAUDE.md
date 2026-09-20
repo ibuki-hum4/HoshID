@@ -49,11 +49,14 @@ HoshID は自前の **OpenID Connect Provider（IdP）**。ユーザーが自分
 
 ### Prisma 7
 
+- **datasource に `url` を書けない。** v7 で廃止された。マイグレーション用の接続情報は **`prisma.config.ts`** に置き、実行時の接続はドライバアダプタが担う。`schema.prisma` の `datasource` は `provider` だけ。
+- **`prisma.config.ts` は `.env` を自動で読まない。** Prisma CLI は Node で動くので bun の `.env` 読み込みも届かない。設定ファイル冒頭の `import "dotenv/config"` を消さないこと。
 - **`new PrismaClient()` を引数なしで呼べない。** v7 で内蔵の接続エンジンが削除され、**ドライバアダプタが必須**になった。PostgreSQL では `@prisma/adapter-pg` を使う:
   ```ts
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
   export const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
   ```
+  ドライバアダプタは node-postgres のプール設定をそのまま使う。**node-postgres の接続タイムアウトは既定で無制限**（Prisma 6 は 5秒だった）なので、`connectionTimeoutMillis` を明示しないと DB が落ちている時にリクエストが永久に待つ。
 - **`prisma` パッケージの `latest` タグは RC（8.0.0-rc）を指している。** `bun add prisma` をそのまま打つと RC が入る。`prisma` と `@prisma/client` は**必ず同一バージョン**にすること（現在 7.10.0 で固定）。
 - **Next 16 + Turbopack で `Cannot find module '.prisma/client/default'` が出る。** `next.config.ts` の `serverExternalPackages` と `turbopack.resolveAlias` で対処済み。**この2つを消さないこと。**
   - 併せて `schema.prisma` の generator は `provider = "prisma-client-js"` のままにし、`output` を足さない。`prisma-client` プロバイダに変えると再発する。

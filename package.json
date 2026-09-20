@@ -19,7 +19,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "auth:schema": "bunx auth@1.7.5 generate --config lib/auth.ts",
+    "auth:schema": "bunx auth@1.7.5 generate --config lib/auth.ts -y",
     "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
@@ -48,6 +48,7 @@
     "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^18.0.1",
     "eslint": "10.11.0",
     "eslint-config-next": "16.3.5",
     "openid-client": "6.8.8",
