@@ -1,0 +1,28 @@
+# Local PostgreSQL for development. Run with Podman:
+#   podman-compose -f compose.dev.yaml up -d
+#
+# A named volume is used rather than a bind mount because rootless Podman maps
+# the container's postgres user into a subuid range, which makes a host bind
+# mount fail on permissions (and on SELinux systems, on labelling too).
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    container_name: hoshid-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hoshid
+      POSTGRES_PASSWORD: hoshid
+      POSTGRES_DB: hoshid
+    ports:
+      - "5432:5432"
+    volumes:
+      - hoshid-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoshid -d hoshid"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hoshid-pgdata:
