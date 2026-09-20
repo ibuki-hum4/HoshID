@@ -56,6 +56,8 @@ async function main() {
     body: {
       client_name: CLIENT_NAME,
       redirect_uris: [REDIRECT_URI],
+      // 明示しないと許可スコープが空になり、認可時に invalid_scope で弾かれる。
+      scope: "openid profile email offline_access",
       // http のループバックを redirect_uri に使えるのは native だけ。
       // "web" は https かつ非ループバックしか受け付けない。
       application_type: "native",

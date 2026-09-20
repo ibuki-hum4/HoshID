@@ -12,10 +12,13 @@
 /// <reference types="bun" />
 import * as client from "openid-client";
 
-const ISSUER = process.env.HOSHID_ISSUER ?? "http://localhost:3000";
+// issuer は origin ではなく Better Auth のマウント先を含む。discovery は
+// この値に /.well-known/openid-configuration を連結した場所を見る。
+const ISSUER = process.env.HOSHID_ISSUER ?? "http://localhost:3000/api/auth";
 const PORT = Number(process.env.PORT ?? 4000);
 const REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
-const SCOPE = "openid profile email";
+// offline_access を要求しないと refresh_token が発行されない。
+const SCOPE = "openid profile email offline_access";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -27,7 +30,9 @@ const config = await client.discovery(
   new URL(ISSUER),
   requireEnv("HOSHID_CLIENT_ID"),
   requireEnv("HOSHID_CLIENT_SECRET"),
-  undefined,
+  // クライアントは client_secret_basic で登録されている。openid-client の
+  // 既定は client_secret_post なので明示しないと invalid_client になる。
+  client.ClientSecretBasic(requireEnv("HOSHID_CLIENT_SECRET")),
   // 開発時は issuer が http なので明示的に許可する。本番では使わない。
   ISSUER.startsWith("http://") ? { execute: [client.allowInsecureRequests] } : undefined,
 );

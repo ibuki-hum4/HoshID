@@ -89,6 +89,19 @@ bun run lint               # eslint .
 bun run build              # next build（Turbopack）
 ```
 
+検証用スクリプト（dev サーバと DB が動いている前提）:
+
+```bash
+# 申請フローの安全性（DB だけあれば動く）
+bun run scripts/verify-application-flow.ts
+
+# 認可コードフローを頭から終わりまで通す
+HOSHID_CLIENT_ID=... HOSHID_CLIENT_SECRET=... E2E_EMAIL=... E2E_PASSWORD=... bun run scripts/e2e-authorization-code.ts
+
+# ブラウザで確認する用の RP（http://127.0.0.1:4000/login）
+HOSHID_CLIENT_ID=... HOSHID_CLIENT_SECRET=... bun run scripts/test-rp/index.ts
+```
+
 **`bun run dev` を勝手に起動しない。** ユーザーが自分で dev サーバを回している場合があり、`.next` を共有すると衝突する。動作確認で起動が必要になったら、まず一声かけること。
 
 ---
@@ -158,11 +171,15 @@ compose.dev.yaml               dev 用 PostgreSQL（Podman）
 2. **認可コードは一度しか使えない。** 再利用を検知したら、そのコードから発行済みのトークンごと失効させる。
 3. **PKCE は必須（S256 のみ）。** `plain` は受け付けない。
 4. **`state` と `nonce` を往復させる。** 同意画面やログイン画面を経由してもクエリを落とさない。
-5. **issuer の三点一致** — Discovery が返す `issuer`、ID トークンの `iss`、RP に設定された issuer。ここがズレると RP は繋がらず、しかもエラーが分かりにくい。`next.config.ts` の rewrite はこのために存在する。
+5. **issuer の三点一致** — Discovery が返す `issuer`、ID トークンの `iss`、RP に設定された issuer。ここがズレると RP は繋がらず、しかもエラーが分かりにくい。
+   **この IdP の issuer は origin ではなく `<origin>/api/auth`。** Better Auth のマウント先がそのまま issuer になり、Discovery もその下（`/api/auth/.well-known/openid-configuration`）に出る。OIDC Discovery は issuer に `/.well-known/openid-configuration` を連結した場所を見るので、これで仕様どおり整合している。
+   **ルート直下に .well-known を rewrite で生やさないこと。** そこで discovery した RP は issuer を `<origin>` と解釈する一方、文書は `<origin>/api/auth` を名乗るため不一致で弾かれる。
 6. **`BETTER_AUTH_SECRET` は JWKS 秘密鍵の暗号鍵を兼ねる。** 失うと全トークンが検証不能になる。ローテーション手順を壊さないこと。
 7. **エラーメッセージでユーザーの存在を漏らさない。** 「メールアドレスが存在しません」と「パスワードが違います」を区別しない。
 8. **パスワードは Argon2id。** Better Auth の既定は scrypt なので、`emailAndPassword.password.hash/verify` の差し替えを外さないこと。`@node-rs/argon2` はネイティブモジュールなので、認証経路を Edge ランタイムにしない。
-9. **秘密情報をログに出さない。** 認可コード、アクセストークン、リフレッシュトークン、client_secret、パスワードは伏せる。
+9. **`refresh_token` は `offline_access` を要求した時だけ発行される。** RP 側のスコープに入れ忘れると、リフレッシュできない理由が分からず悩むことになる。
+10. **OAuth クライアントには必ず `scope` を設定する。** 空のまま登録すると認可時に `invalid_scope` で落ちる。
+11. **秘密情報をログに出さない。** 認可コード、アクセストークン、リフレッシュトークン、client_secret、パスワードは伏せる。
 
 ---
 

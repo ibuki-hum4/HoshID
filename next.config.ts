@@ -18,26 +18,17 @@ const nextConfig: NextConfig = {
     },
   },
 
-  async rewrites() {
-    // Better Auth mounts its handler under /api/auth/*, but relying parties
-    // discover an OIDC provider at the issuer root. Serving the well-known
-    // documents from both places lets `issuer`, the `iss` claim of issued ID
-    // tokens and the issuer configured in each RP be the same origin.
-    return [
-      {
-        source: "/.well-known/openid-configuration",
-        destination: "/api/auth/.well-known/openid-configuration",
-      },
-      {
-        source: "/.well-known/oauth-authorization-server",
-        destination: "/api/auth/.well-known/oauth-authorization-server",
-      },
-      {
-        source: "/.well-known/jwks.json",
-        destination: "/api/auth/jwks",
-      },
-    ];
-  },
+  // ここに /.well-known の rewrite は置かない。
+  //
+  // Better Auth は /api/auth にマウントされ、issuer も
+  // "<origin>/api/auth" を名乗る。OIDC Discovery は issuer に
+  // "/.well-known/openid-configuration" を連結した場所を見るので、
+  // 現状で既に仕様どおり整合している。
+  //
+  // ルート直下にも同じ文書を出すと、そこで discovery した RP は issuer を
+  // "<origin>" だと解釈する一方、文書は "<origin>/api/auth" を名乗るため、
+  // issuer の不一致として弾かれる。RP に設定する issuer は
+  // "<origin>/api/auth" で統一すること。
 };
 
 export default nextConfig;
