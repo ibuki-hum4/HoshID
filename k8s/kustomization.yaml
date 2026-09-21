@@ -12,6 +12,8 @@ resources:
   - service.yaml
   - ingress.yaml
   - migrate-job.yaml
+  # 初代管理者。作り終えたら消してよい。
+  - seed-admin-job.yaml
   - discord-sync-cronjob.yaml
   - bot-deployment.yaml
   # 封をしたもの。**secret.yaml（平文）は絶対に入れない。**
@@ -27,6 +29,6 @@ resources:
 # コードが動く。CI は両方に同じタグを付けて push する。
 images:
   - name: ghcr.io/ibuki-hum4/hoshid
-    newTag: v0.1.2
+    newTag: v0.1.3
   - name: ghcr.io/ibuki-hum4/hoshid-migrator
-    newTag: v0.1.2
+    newTag: v0.1.3

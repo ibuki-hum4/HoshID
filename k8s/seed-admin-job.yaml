@@ -1,0 +1,60 @@
+# 初代管理者を作る。
+#
+# **これが無いと全員 prepared のまま、承認できる人が誰もいない**状態になる
+# （申請 → 承認の仕組みなので、最初の1人だけは外から入れるしかない）。
+#
+# 冪等。既にそのアドレスのアカウントがあればパスワードは変えず、active と
+# admin であることだけを保証する。マイグレーションの後（wave 2）に走る。
+#
+# **作り終えたら、このファイルと secret.yaml の SEED_ADMIN_* を消してよい。**
+# 残しておいても害は無いが、使わない資格情報を持ち続ける理由も無い。
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hoshid-seed-admin
+  namespace: hoshid
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    # マイグレーション（wave 1）の後。DB にテーブルが無いと作れない。
+    argocd.argoproj.io/sync-wave: "2"
+    # 成功したら消す。失敗したものはログを見たいので残る。
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: seed
+          image: ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.3
+          imagePullPolicy: IfNotPresent
+          command: ["bun", "run", "seed:admin"]
+          # SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD は Secret に入っている。
+          envFrom:
+            - configMapRef:
+                name: hoshid-config
+            - secretRef:
+                name: hoshid-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
