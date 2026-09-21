@@ -61,12 +61,15 @@ kubeseal --cert k8s/cert.pem -f k8s/secret.yaml -o yaml > k8s/sealed-secret.yaml
 ### 3. `TRUSTED_PROXIES`
 
 ```bash
-kubectl get pod -n kube-system -l app.kubernetes.io/name=traefik -o wide
+kubectl get pod -A -l app.kubernetes.io/name=traefik -o wide
 ```
 
 Traefik の Pod が属する CIDR を [configmap.yaml](configmap.yaml) に入れる。
+MicroK8s の既定は `10.1.0.0/16`（Calico）なので、そのままのはず。
+
 **間違っているとクライアント IP を特定できず、レート制限が全員で1つのバケツに
-なる**（ログインは10秒3回）。気づける形では壊れない。
+なる**（ログインは10秒3回）。気づける形では壊れないので、デプロイ後に
+**`/lounge/admin/audit` の IP 欄**で答え合わせする。埋まっていれば合っている。
 
 ### 4. 適用して、初代管理者を作る
 
@@ -106,9 +109,8 @@ kubectl -n hoshid run discord-check --rm -it --restart=Never \
 ## 未完了
 
 - [ ] **バックアップをクラスタの外へ出す。** 保管先が未定
-- [ ] **`TRUSTED_PROXIES` を実際の値にする。** いまは `10.42.0.0/16` の決め打ち
-- [ ] **Ingress の `certresolver`。** `letsencrypt` 決め打ちなので、Traefik 側の
-      resolver 名と合っているか確認する
+- [ ] **`TRUSTED_PROXIES` の答え合わせ。** MicroK8s の既定値 `10.1.0.0/16` を
+      入れてある。デプロイ後、監査ログの IP 欄が埋まるか確認する
 - [ ] **復元を一度試す。** 試していないバックアップはバックアップではない
 
 ## 構成
@@ -123,5 +125,5 @@ kubectl -n hoshid run discord-check --rm -it --restart=Never \
 | `configmap.yaml` | 秘密でない設定 |
 | `secret.yaml` | 平文。**Git に入れない**（封をする元） |
 | `sealed-secret.yaml` | 封をしたもの。Git に入れる |
-| `ingress.yaml` | Traefik。証明書の出所はクラスタ側に合わせる |
+| `ingress.yaml` | Traefik。TLS はクラスタ側で解決するので指定を持たない |
 | `argocd-application.yaml` | ArgoCD に手で適用する |
