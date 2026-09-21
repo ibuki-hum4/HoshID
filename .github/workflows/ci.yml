@@ -1,0 +1,135 @@
+# 型・lint・ビルド・実DBを使った検証。
+#
+# **ビルドまで必ず通すこと。** このリポジトリで繰り返し踏んでいる失敗
+# （クライアントコンポーネントがサーバ専用の依存を引きずり込む）は、
+# typecheck と lint では捕まらず next build で初めて落ちる。
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.4.2"
+
+jobs:
+  check:
+    name: 型と lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - run: bun install --frozen-lockfile
+
+      # 型生成に Prisma Client が要る。DB には繋がないが、
+      # prisma.config.ts が DATABASE_URL を読むので形だけ渡す。
+      - name: Prisma Client を生成
+        run: bunx prisma generate
+        env:
+          DATABASE_URL: postgres://unused:unused@127.0.0.1:5432/unused
+
+      - run: bun run typecheck
+      - run: bun run lint
+
+  verify:
+    name: ビルドと実DBでの検証
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hoshid
+          POSTGRES_PASSWORD: hoshid
+          POSTGRES_DB: hoshid
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hoshid -d hoshid"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://hoshid:hoshid@127.0.0.1:5432/hoshid
+      BETTER_AUTH_URL: http://localhost:3000
+      # CI 専用の使い捨て。**本番の値をここに書かないこと。**
+      BETTER_AUTH_SECRET: ci-only-secret-do-not-use-in-production-32
+      NEXT_TELEMETRY_DISABLED: "1"
+      SEED_ADMIN_EMAIL: ci-admin@example.invalid
+      SEED_ADMIN_PASSWORD: ci-only-password-4Kd8vQ
+      E2E_EMAIL: ci-admin@example.invalid
+      E2E_PASSWORD: ci-only-password-4Kd8vQ
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+
+      - name: マイグレーションを適用
+        run: bun run db:deploy
+
+      # 申請フローの安全性（ステータス詐称の拒否、未承認ユーザーの遮断）。
+      # ここが落ちたら、承認を経ずにログインできる状態を意味する。
+      - name: 申請フローを検証
+        run: bun run verify:apply
+
+      # 鍵を作って復号・署名・検証まで通す。落ちると症状はログインの失敗。
+      - name: 署名鍵を検証
+        run: bun run verify:jwks
+
+      # デプロイのたびに走る保守処理がべき等であること。
+      - name: 鍵の保守処理を2回流す
+        run: |
+          bun run keys:maintain
+          bun run keys:maintain
+
+      - run: bun run build
+
+      - name: 初期データを投入
+        run: |
+          bun run seed:admin
+          bun run seed:client
+        env:
+          SEED_CLIENT_OUTPUT: ${{ runner.temp }}/client.json
+
+      - name: サーバを起動して待つ
+        run: |
+          bun run start > "${{ runner.temp }}/server.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/auth/.well-known/openid-configuration > /dev/null; then
+              echo "server is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server did not come up"
+          cat "${{ runner.temp }}/server.log"
+          exit 1
+
+      # Discovery・JWKS・認可コード・PKCE・ID トークンの検証まで、
+      # openid-client に仕様どおり確かめさせる。
+      - name: 認可コードフローを端から端まで
+        run: |
+          export HOSHID_CLIENT_ID=$(jq -r .HOSHID_CLIENT_ID "${{ runner.temp }}/client.json")
+          export HOSHID_CLIENT_SECRET=$(jq -r .HOSHID_CLIENT_SECRET "${{ runner.temp }}/client.json")
+          bun run e2e
+
+      - name: サーバのログ（失敗時）
+        if: failure()
+        run: cat "${{ runner.temp }}/server.log" || true

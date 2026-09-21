@@ -7,7 +7,8 @@ const nextConfig: NextConfig = {
 
   // Prisma 7 ships a native query compiler and a generated client that must not
   // be bundled.
-  serverExternalPackages: ["@prisma/client", "pg"],
+  // sharp はネイティブモジュールなのでバンドルさせない。
+  serverExternalPackages: ["@prisma/client", "pg", "sharp"],
 
   turbopack: {
     // Turbopack loses track of the generated client during SSR and fails with
@@ -16,6 +17,24 @@ const nextConfig: NextConfig = {
     resolveAlias: {
       ".prisma/client/default": "./node_modules/.prisma/client/default.js",
     },
+  },
+
+  // 検索に載せない。
+  //
+  // `app/layout.tsx` の metadata で noindex は出しているが、**あれは HTML に
+  // しか付かない。** 画像（/api/avatar）や JSON（discovery、JWKS）はメタタグを
+  // 持てないので、ヘッダで同じことを伝える。
+  //
+  // robots.txt でクロール自体を止めていないのは意図的。止めるとクローラが
+  // この指示を読めず、外部リンク経由で URL だけが検索結果に残る。理由は
+  // app/robots.ts に書いてある。
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
   },
 
   // ここに /.well-known の rewrite は置かない。

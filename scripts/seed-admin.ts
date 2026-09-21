@@ -41,7 +41,7 @@ async function main() {
   const promoted = await prisma.user.update({
     where: { email },
     data: {
-      status: ACCOUNT_STATUS.approved,
+      status: ACCOUNT_STATUS.active,
       role: "admin",
       emailVerified: true,
       reviewedAt: new Date(),

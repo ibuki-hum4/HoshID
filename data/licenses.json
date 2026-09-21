@@ -1,0 +1,263 @@
+{
+  "generatedAt": "2026-09-20T13:35:59.182Z",
+  "entries": [
+    {
+      "name": "@better-auth/oauth-provider",
+      "version": "1.7.5",
+      "license": "MIT",
+      "homepage": "https://www.better-auth.com/docs/plugins/oauth-provider"
+    },
+    {
+      "name": "@better-auth/passkey",
+      "version": "1.7.5",
+      "license": "MIT",
+      "homepage": "https://www.better-auth.com/docs/plugins/passkey"
+    },
+    {
+      "name": "@hookform/resolvers",
+      "version": "5.9.1",
+      "license": "MIT",
+      "homepage": "https://react-hook-form.com"
+    },
+    {
+      "name": "@node-rs/argon2",
+      "version": "2.2.1",
+      "license": "MIT",
+      "homepage": "https://github.com/napi-rs/node-rs"
+    },
+    {
+      "name": "@prisma/adapter-pg",
+      "version": "7.10.0",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/prisma/prisma"
+    },
+    {
+      "name": "@prisma/client",
+      "version": "7.10.0",
+      "license": "Apache-2.0",
+      "homepage": "https://www.prisma.io"
+    },
+    {
+      "name": "@tailwindcss/postcss",
+      "version": "4.3.3",
+      "license": "MIT",
+      "homepage": "https://tailwindcss.com"
+    },
+    {
+      "name": "@types/bun",
+      "version": "1.4.2",
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/bun"
+    },
+    {
+      "name": "@types/node",
+      "version": "24.13.6",
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node"
+    },
+    {
+      "name": "@types/nodemailer",
+      "version": "8.0.2",
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/nodemailer"
+    },
+    {
+      "name": "@types/pg",
+      "version": "8.23.1",
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/pg"
+    },
+    {
+      "name": "@types/qrcode",
+      "version": "1.5.6",
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/qrcode"
+    },
+    {
+      "name": "@types/react",
+      "version": "19.3.0",
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react"
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.3.0",
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom"
+    },
+    {
+      "name": "better-auth",
+      "version": "1.7.5",
+      "license": "MIT",
+      "homepage": "https://better-auth.com"
+    },
+    {
+      "name": "class-variance-authority",
+      "version": "0.7.1",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/joe-bell/cva#readme"
+    },
+    {
+      "name": "clsx",
+      "version": "2.1.1",
+      "license": "MIT",
+      "homepage": null
+    },
+    {
+      "name": "cn",
+      "version": "0.3.0",
+      "license": "MIT",
+      "homepage": "https://github.com/shadcn-ui/cn"
+    },
+    {
+      "name": "dotenv",
+      "version": "18.0.1",
+      "license": "BSD-2-Clause",
+      "homepage": "https://github.com/motdotla/dotenv#readme"
+    },
+    {
+      "name": "eslint",
+      "version": "10.11.0",
+      "license": "MIT",
+      "homepage": "https://eslint.org"
+    },
+    {
+      "name": "eslint-config-next",
+      "version": "16.3.5",
+      "license": "MIT",
+      "homepage": "https://nextjs.org/docs/app/api-reference/config/eslint"
+    },
+    {
+      "name": "lucide-react",
+      "version": "1.47.0",
+      "license": "ISC",
+      "homepage": "https://lucide.dev"
+    },
+    {
+      "name": "next",
+      "version": "16.3.5",
+      "license": "MIT",
+      "homepage": "https://nextjs.org"
+    },
+    {
+      "name": "next-themes",
+      "version": "0.4.6",
+      "license": "MIT",
+      "homepage": "https://github.com/pacocoursey/next-themes"
+    },
+    {
+      "name": "nodemailer",
+      "version": "10.0.10",
+      "license": "MIT-0",
+      "homepage": "https://nodemailer.com/"
+    },
+    {
+      "name": "openid-client",
+      "version": "6.8.8",
+      "license": "MIT",
+      "homepage": "https://github.com/panva/openid-client"
+    },
+    {
+      "name": "pg",
+      "version": "8.23.0",
+      "license": "MIT",
+      "homepage": "https://github.com/brianc/node-postgres"
+    },
+    {
+      "name": "prisma",
+      "version": "7.10.0",
+      "license": "Apache-2.0",
+      "homepage": "https://www.prisma.io"
+    },
+    {
+      "name": "qrcode",
+      "version": "1.5.4",
+      "license": "MIT",
+      "homepage": "http://github.com/soldair/node-qrcode"
+    },
+    {
+      "name": "radix-ui",
+      "version": "1.6.7",
+      "license": "MIT",
+      "homepage": "https://radix-ui.com/primitives"
+    },
+    {
+      "name": "react",
+      "version": "19.3.0",
+      "license": "MIT",
+      "homepage": "https://react.dev/"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.3.0",
+      "license": "MIT",
+      "homepage": "https://react.dev/"
+    },
+    {
+      "name": "react-easy-crop",
+      "version": "6.2.3",
+      "license": "MIT",
+      "homepage": "https://ValentinH.github.io/react-easy-crop/"
+    },
+    {
+      "name": "react-hook-form",
+      "version": "7.88.0",
+      "license": "MIT",
+      "homepage": "https://react-hook-form.com"
+    },
+    {
+      "name": "react-markdown",
+      "version": "10.1.0",
+      "license": "MIT",
+      "homepage": null
+    },
+    {
+      "name": "remark-gfm",
+      "version": "4.0.1",
+      "license": "MIT",
+      "homepage": null
+    },
+    {
+      "name": "sharp",
+      "version": "0.35.4",
+      "license": "Apache-2.0",
+      "homepage": "https://sharp.pixelplumbing.com"
+    },
+    {
+      "name": "sonner",
+      "version": "2.0.8",
+      "license": "MIT",
+      "homepage": "https://sonner.emilkowal.ski/"
+    },
+    {
+      "name": "tailwind-merge",
+      "version": "3.7.0",
+      "license": "MIT",
+      "homepage": "https://github.com/dcastil/tailwind-merge"
+    },
+    {
+      "name": "tailwindcss",
+      "version": "4.3.3",
+      "license": "MIT",
+      "homepage": "https://tailwindcss.com"
+    },
+    {
+      "name": "tw-animate-css",
+      "version": "1.4.0",
+      "license": "MIT",
+      "homepage": "https://github.com/Wombosvideo/tw-animate-css#readme"
+    },
+    {
+      "name": "typescript",
+      "version": "6.0.3",
+      "license": "Apache-2.0",
+      "homepage": "https://www.typescriptlang.org/"
+    },
+    {
+      "name": "zod",
+      "version": "4.6.5",
+      "license": "MIT",
+      "homepage": "https://zod.dev"
+    }
+  ]
+}

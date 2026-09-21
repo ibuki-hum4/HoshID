@@ -1,11 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { BadgeCheck, ExternalLink, ShieldAlert, ShieldCheck } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,49 +20,33 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { describeScope, isKnownScope, parseScopes } from "@/lib/scopes";
 
-type PublicClient = {
-  client_id: string;
-  client_name?: string | null;
-  logo_uri?: string | null;
-  client_uri?: string | null;
+export type ConsentClient = {
+  clientId: string;
+  name: string | null;
+  logoUri: string | null;
+  clientUri: string | null;
+  redirectHosts: string[];
+  ownerName: string | null;
+  verified: boolean;
+  registeredAt: string | null;
+  firstTime: boolean;
 };
 
 type RedirectResult = { redirect: true; url: string };
 
-export function ConsentForm() {
+export function ConsentForm({ client }: { client: ConsentClient | null }) {
   const searchParams = useSearchParams();
-  const clientId = searchParams.get("client_id");
   const requestedScopes = parseScopes(searchParams.get("scope"));
 
-  const [client, setClient] = useState<PublicClient | null>(null);
   const [granted, setGranted] = useState<string[]>(requestedScopes);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!clientId) return;
-    let cancelled = false;
-
-    fetch(
-      `/api/auth/oauth2/public-client?client_id=${encodeURIComponent(clientId)}`,
-      { credentials: "include" },
-    )
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: PublicClient | null) => {
-        if (!cancelled && data) setClient(data);
-      })
-      .catch(() => {
-        // クライアント名が取れなくても同意自体は続行できる。client_id を出す。
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId]);
-
   function toggleScope(scope: string, checked: boolean) {
     setGranted((current) =>
-      checked ? [...new Set([...current, scope])] : current.filter((s) => s !== scope),
+      checked
+        ? [...new Set([...current, scope])]
+        : current.filter((s) => s !== scope),
     );
   }
 
@@ -99,12 +84,9 @@ export function ConsentForm() {
     }
   }
 
-  const displayName = client?.client_name ?? clientId ?? "不明なアプリ";
-  const hasUnknownScope = requestedScopes.some((scope) => !isKnownScope(scope));
-
-  if (!clientId) {
+  if (!client) {
     return (
-      <Card className="rounded-3xl shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="text-2xl">リクエストが不正です</CardTitle>
           <CardDescription>
@@ -115,19 +97,29 @@ export function ConsentForm() {
     );
   }
 
+  const displayName = client.name ?? client.clientId;
+  const hasUnknownScope = requestedScopes.some((scope) => !isKnownScope(scope));
+
   return (
-    <Card className="rounded-3xl shadow-sm">
+    <Card>
       <CardHeader className="text-center">
         <Avatar className="mx-auto size-12">
-          {client?.logo_uri ? (
-            <AvatarImage src={client.logo_uri} alt="" />
-          ) : null}
+          {client.logoUri ? <AvatarImage src={client.logoUri} alt="" /> : null}
           <AvatarFallback>
             <ShieldCheck className="size-6" aria-hidden />
           </AvatarFallback>
         </Avatar>
 
-        <CardTitle className="mt-4 text-2xl">{displayName}</CardTitle>
+        <CardTitle className="mt-4 flex flex-wrap items-center justify-center gap-2 text-2xl">
+          {displayName}
+          {client.verified ? (
+            <Badge variant="secondary" className="gap-1 rounded-full">
+              <BadgeCheck className="size-3.5" aria-hidden />
+              検証済み
+            </Badge>
+          ) : null}
+        </CardTitle>
+
         <CardDescription>
           このアプリがあなたの HoshID アカウントへのアクセスを求めています。
         </CardDescription>
@@ -139,6 +131,66 @@ export function ConsentForm() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
+
+        {/*
+          アプリ名は登録者が自由に付けられる。検証していないものは
+          「HoshID 公式」等を名乗れてしまうため、必ず未検証であることを示す。
+        */}
+        {client.verified ? null : (
+          <Alert variant="destructive">
+            <ShieldAlert className="size-4" aria-hidden />
+            <AlertDescription>
+              このアプリは HoshID が検証していません。アプリ名は登録者が自由に付けた
+              ものです。心当たりのないアプリには許可しないでください。
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {client.firstTime ? (
+          <p className="text-muted-foreground text-sm">
+            このアプリに許可を与えるのは初めてです。
+          </p>
+        ) : null}
+
+        <dl className="bg-muted/40 space-y-2 rounded-lg p-4 text-sm">
+          <div className="flex gap-3">
+            <dt className="text-muted-foreground w-24 shrink-0">送信先</dt>
+            <dd className="min-w-0 break-all">
+              {client.redirectHosts.length > 0
+                ? client.redirectHosts.join(", ")
+                : "不明"}
+            </dd>
+          </div>
+
+          <div className="flex gap-3">
+            <dt className="text-muted-foreground w-24 shrink-0">登録者</dt>
+            <dd className="min-w-0 break-all">{client.ownerName ?? "不明"}</dd>
+          </div>
+
+          {client.registeredAt ? (
+            <div className="flex gap-3">
+              <dt className="text-muted-foreground w-24 shrink-0">登録日</dt>
+              <dd>{new Date(client.registeredAt).toLocaleDateString("ja-JP")}</dd>
+            </div>
+          ) : null}
+
+          {client.clientUri ? (
+            <div className="flex gap-3">
+              <dt className="text-muted-foreground w-24 shrink-0">サイト</dt>
+              <dd className="min-w-0">
+                <a
+                  href={client.clientUri}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow ugc"
+                  className="inline-flex items-center gap-1 break-all underline underline-offset-4"
+                >
+                  {client.clientUri}
+                  <ExternalLink className="size-3 shrink-0" aria-hidden />
+                </a>
+              </dd>
+            </div>
+          ) : null}
+        </dl>
 
         {hasUnknownScope ? (
           <Alert variant="destructive">
@@ -159,9 +211,7 @@ export function ConsentForm() {
                   id={`scope-${scope}`}
                   checked={granted.includes(scope)}
                   disabled={locked || submitting}
-                  onCheckedChange={(checked) =>
-                    toggleScope(scope, checked === true)
-                  }
+                  onCheckedChange={(checked) => toggleScope(scope, checked === true)}
                   className="mt-1"
                 />
                 <div className="space-y-0.5">
@@ -176,9 +226,7 @@ export function ConsentForm() {
                       </span>
                     ) : null}
                   </label>
-                  <p className="text-muted-foreground text-sm">
-                    {description.detail}
-                  </p>
+                  <p className="text-muted-foreground text-sm">{description.detail}</p>
                 </div>
               </li>
             );
@@ -191,14 +239,12 @@ export function ConsentForm() {
       <CardFooter className="justify-end gap-2">
         <Button
           variant="ghost"
-          className="rounded-full"
           disabled={submitting}
           onClick={() => submit(false)}
         >
           拒否
         </Button>
         <Button
-          className="rounded-full"
           disabled={submitting}
           onClick={() => submit(true)}
         >

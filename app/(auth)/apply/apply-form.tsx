@@ -27,8 +27,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { authClient } from "@/lib/auth-client";
+
+import { submitApplication } from "./actions";
 
 const schema = z.object({
   name: z.string().min(1, "表示名を入力してください").max(64),
@@ -37,10 +37,6 @@ const schema = z.object({
     .string()
     .min(8, "パスワードは8文字以上にしてください")
     .max(128),
-  applicationReason: z
-    .string()
-    .min(1, "申請理由を入力してください")
-    .max(1000, "1000文字以内で入力してください"),
 });
 
 export function ApplyForm() {
@@ -50,33 +46,29 @@ export function ApplyForm() {
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", email: "", password: "", applicationReason: "" },
+    defaultValues: { name: "", email: "", password: "" },
   });
 
   async function onSubmit(values: z.infer<typeof schema>) {
     setError(null);
 
-    const { error: signUpError } = await authClient.signUp.email({
-      name: values.name,
-      email: values.email,
-      password: values.password,
-      applicationReason: values.applicationReason,
-    });
+    // 申請はサーバ側で処理する。申請した本人にだけ、この先へ進むための
+    // チケットを Cookie で渡すため（app/(auth)/apply/actions.ts）。
+    // 既に登録済みのメールアドレスかどうかは、ここでは区別できない作りに
+    // なっている。区別できると「誰が HoshID を使っているか」を総当たりで
+    // 調べられる。
+    const result = await submitApplication(values);
 
-    // 既に登録済みのメールアドレスでも、申請できたかどうかを区別させない。
-    // 区別できると「誰が HoshID を使っているか」を総当たりで調べられる。
-    if (signUpError && signUpError.code !== "USER_ALREADY_EXISTS") {
-      setError(
-        "申請を受け付けられませんでした。しばらくしてからもう一度お試しください。",
-      );
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
 
-    router.push("/apply/submitted");
+    router.push("/apply/link");
   }
 
   return (
-    <Card className="rounded-3xl shadow-sm">
+    <Card>
       <CardHeader>
         <CardTitle className="text-2xl">アカウント申請</CardTitle>
         <CardDescription>
@@ -148,32 +140,15 @@ export function ApplyForm() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="applicationReason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>申請理由</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      rows={4}
-                      placeholder="どの用途で HoshID を使いたいかを書いてください。"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </CardContent>
 
           <CardFooter className="mt-6 flex-col gap-4">
             <Button
               type="submit"
-              className="w-full rounded-full"
+              className="w-full"
               disabled={form.formState.isSubmitting}
             >
-              {form.formState.isSubmitting ? "送信しています…" : "申請する"}
+              {form.formState.isSubmitting ? "送信しています…" : "申請を送る"}
             </Button>
 
             <p className="text-muted-foreground text-sm">

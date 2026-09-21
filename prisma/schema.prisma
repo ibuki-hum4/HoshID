@@ -25,8 +25,7 @@ model User {
   banned             Boolean?            @default(false)
   banReason          String?
   banExpires         DateTime?
-  status             String              @default("pending")
-  applicationReason  String?
+  status             String              @default("prepared")
   appliedAt          DateTime?
   reviewedAt         DateTime?
   reviewedBy         String?
@@ -37,6 +36,16 @@ model User {
   oauthrefreshtokens OauthRefreshToken[]
   oauthaccesstokens  OauthAccessToken[]
   oauthconsents      OauthConsent[]
+
+  nickname String?
+  bio      String?
+
+  passkeys Passkey[]
+
+  twoFactorEnabled Boolean?    @default(false)
+  twofactors       TwoFactor[]
+
+  notifyAnnouncements Boolean? @default(true)
 
   @@unique([email])
   @@map("user")
@@ -55,6 +64,8 @@ model Session {
   impersonatedBy     String?
   oauthrefreshtokens OauthRefreshToken[]
   oauthaccesstokens  OauthAccessToken[]
+
+  amr String?
 
   @@unique([token])
   @@index([userId])
@@ -275,4 +286,251 @@ model OauthClientAssertion {
   expiresAt DateTime
 
   @@map("oauthClientAssertion")
+}
+
+/// プロフィールに並べる SNS / 任意のリンク。
+/// Better Auth の additionalFields はスカラー値しか持てないので、
+/// 複数件を扱うこのモデルだけは手書きで維持する。
+
+model UserLink {
+  id        String   @id @default(cuid())
+  /// User.id を指す。Better Auth 側の User モデルは auth:schema が再生成する
+  /// ため、あちらにリレーションフィールドを足さずに済むよう、ここでは
+  /// Prisma のリレーションを張らず外部キーはマイグレーションで付ける。
+  userId    String
+  /// "x" / "github" / "discord" などの既知の種別、または "custom"。
+  kind      String   @default("custom")
+  label     String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("user_link")
+}
+
+/// 申請などの出来事を Discord / Slack に通知するための宛先。
+/// Better Auth 由来ではないので手書きで維持する。
+
+model Webhook {
+  id         String    @id @default(cuid())
+  /// "discord" または "slack"。
+  kind       String    @default("discord")
+  label      String
+  /// 検証済みの https URL。登録時にホストを限定している。
+  url        String
+  /// 通知する出来事の種別（application.submitted など）。
+  events     String[]
+  enabled    Boolean   @default(true)
+  createdBy  String?
+  lastSentAt DateTime?
+  lastError  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("webhook")
+}
+
+/// プロフィールのアイコン画像。
+///
+/// User に直接持たせず別テーブルにしているのは、画像のバイト列が
+/// ユーザーの一覧取得のたびに読み込まれるのを避けるため。select を
+/// 書き忘れた1箇所で一覧が重くなるのは避けたい。
+
+model Avatar {
+  /// User.id と 1:1。UserLink と同様、User 側にリレーションを足すと
+  /// auth:schema の再生成で消えるため外部キーはマイグレーションで付ける。
+  userId    String   @id
+  /// 常にサーバ側で再エンコードした image/webp。
+  mimeType  String   @default("image/webp")
+  data      Bytes
+  width     Int
+  height    Int
+  /// 画像 URL のキャッシュを破棄するための版。更新のたびに変わる。
+  version   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("avatar")
+}
+
+/// 管理者が「公式のアプリ」と認めた OAuth クライアント。
+///
+/// 誰でもアプリを登録できるため、同意画面に出るクライアント名は自称でしかない。
+/// 「HoshID 公式」を名乗るアプリを作れば利用者を騙せてしまうので、管理者が
+/// 明示的に検証したものだけを区別して表示する。
+///
+/// OauthClient は auth:schema が再生成するモデルなので、そちらにフィールドを
+/// 足さず別テーブルに持つ。
+
+model OauthClientTrust {
+  clientId   String    @id
+  verified   Boolean   @default(false)
+  verifiedBy String?
+  verifiedAt DateTime?
+  note       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("oauth_client_trust")
+}
+
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkey")
+}
+
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+/// 全メンバーに向けたお知らせ。作成できるのは管理者だけ。
+///
+/// 本文は書式なしのテキストとして扱う。HTML を許すと、管理者アカウントが
+/// 乗っ取られたときに全員の画面で任意のスクリプトが走ることになる。
+
+model Announcement {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  /// "info" | "warning" | "critical"。表示の強さを決める。
+  level       String    @default("info")
+  /// 下書きは管理者にしか見えない。
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  /// 一覧とダッシュボードで先頭に固定する。
+  pinned      Boolean   @default(false)
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([published, publishedAt])
+  @@map("announcement")
+}
+
+model DeviceCode {
+  id              String    @id
+  deviceCode      String
+  userCode        String
+  userId          String?
+  expiresAt       DateTime
+  status          String
+  lastPolledAt    DateTime?
+  pollingInterval Int?
+  clientId        String?
+  scope           String?
+  resources       String[]
+  oauthClientId   String?
+
+  @@unique([deviceCode], map: "deviceCode_deviceCode_uidx")
+  @@unique([userCode], map: "deviceCode_userCode_uidx")
+  @@map("deviceCode")
+}
+
+/// 管理操作の記録。
+///
+/// **行為者と対象の名前は、その時点の値を写して持つ。** 参照で持つと、
+/// アカウントが削除されたときに「誰が何をしたか」が辿れなくなる。監査ログは
+/// 対象が消えた後にこそ読まれるので、消えない形で残す必要がある。
+/// 外部サービスのアカウントとの連携。
+///
+/// 本人確認（Discord）と、プロフィールの表示（GitHub の草）に使う。
+/// UserLink（本人が手で書く URL）とは別物で、**こちらは OAuth を通って
+/// 本人であることを確かめた結果**。
+model SocialLink {
+  id String @id @default(cuid())
+
+  /// User.id を指す。UserLink と同様、User 側にリレーションを足すと
+  /// auth:schema の再生成で消えるため外部キーはマイグレーションで付ける。
+  userId String
+
+  /// "discord" | "github"
+  provider String
+
+  /// 相手側の不変な ID。ユーザー名は変わるのでこちらで同一性を見る。
+  providerAccountId String
+
+  /// 表示用の写し。表示のたびに相手を叩かずに済むよう持っておく
+  /// （トークンは期限切れになるし、相手が落ちていても名前は出したい）。
+  username    String
+  displayName String?
+  avatarUrl   String?
+  profileUrl  String?
+
+  /// GitHub の草をプロフィールに出すか。**既定は出さない。**
+  /// 出すかどうかは本人が選ぶ。
+  showContributions Boolean @default(false)
+
+  /// 草の取得結果のキャッシュ。GitHub API には毎回行かない。
+  contributions          Json?
+  contributionsFetchedAt DateTime?
+
+  /// Discord のサーバに参加しているか。null は未確認。
+  /// ロールを付けようとした結果から分かるので、そのときに書き込む。
+  /// **画面の一覧から毎回 Discord に問い合わせないため**に持っている。
+  inGuild        Boolean?
+  guildCheckedAt DateTime?
+
+  linkedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// **同じ外部アカウントを複数の HoshID アカウントに紐づけない。**
+  /// できてしまうと、1つの Discord アカウントで何人分もの申請を
+  /// 裏付けられることになり、本人確認の意味が消える。
+  @@unique([provider, providerAccountId])
+  /// Discord は1人が複数のアカウントを繋げる。GitHub は1つだけ。
+  /// 「GitHub は1人1つ」は Prisma で表せない（provider の値による条件付き）
+  /// ので、マイグレーションで部分ユニークインデックスを張っている。
+  /// 20260921020000_social_links_allow_multiple_discord を参照。
+  @@index([userId])
+  @@map("social_link")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  /// 操作した人。退会しても記録は残すので参照は張らない。
+  actorId     String?
+  actorLabel  String
+  /// "application.approve" のような操作の種別。
+  action      String
+  /// "user" / "oauthClient" / "announcement" / "webhook" など。
+  targetType  String?
+  targetId    String?
+  targetLabel String?
+  /// 補足。却下理由や変更前後の値など、人が読む前提の短い文字列。
+  detail      String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([actorId])
+  @@map("audit_log")
 }

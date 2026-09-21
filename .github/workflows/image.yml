@@ -1,0 +1,122 @@
+# コンテナイメージのビルドと公開。
+#
+# ビルドは compose.yaml の定義をそのまま使う。手元で `docker compose build`
+# して動いたものと、CI が作るものを同じにするため。**Dockerfile の引数を CI
+# 側にも書き写さないこと。** 二重に持つと必ず片方が古くなる。
+#
+# 公開先は GitHub Container Registry（ghcr.io）。GITHUB_TOKEN で押せるので
+# 追加の Secret が要らない。別のレジストリに変えるときは、login のステップと
+# IMAGE_BASE を差し替える。
+#
+# タグの付け方:
+#   sha-<短いコミットSHA>  常に付く。動作確認用
+#   vX.Y.Z                 そのタグを打ったときだけ付く。**本番が追うのはこれ**
+#
+# **中身が入れ替わるタグは作らない。** ブランチ名や latest を付けると、同じ
+# タグが別のイメージを指すようになり、いつのものが動いているか追えなくなる。
+# vX.Y.Z は一度きりなので、本番から指して問題ない。
+#
+# 本番へ出すとき:
+#   git tag v0.1.0 && git push origin v0.1.0
+# これで CI が走り、ArgoCD Image Updater が最新の vX.Y.Z を拾って
+# k8s/kustomization.yaml を書き換える（k8s/argocd-application.yaml）。
+name: Image
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_BASE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    name: ビルドと公開
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: タグを決める
+        id: meta
+        run: |
+          set -eu
+          SHA_TAG="sha-$(git rev-parse --short HEAD)"
+          echo "sha_tag=${SHA_TAG}" >> "$GITHUB_OUTPUT"
+
+          # **付けるのは vX.Y.Z だけ。** ブランチ名のタグは中身が入れ替わる
+          # ので付けない。本番が追うのはバージョンタグで、それは一度きり。
+          VERSION_TAG=""
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            case "${GITHUB_REF_NAME}" in
+              v[0-9]*.[0-9]*.[0-9]*) VERSION_TAG="${GITHUB_REF_NAME}" ;;
+              *) echo "::error::vX.Y.Z の形ではないタグです: ${GITHUB_REF_NAME}"; exit 1 ;;
+            esac
+          fi
+          echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
+
+      # PR ではビルドが通ることだけを確かめ、公開はしない。
+      - name: ghcr.io にログイン
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: イメージをビルド
+        run: docker compose build
+        env:
+          HOSHID_IMAGE: ${{ env.IMAGE_BASE }}
+          HOSHID_IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
+          # compose は BETTER_AUTH_SECRET が無いと構文解釈で落ちる。
+          # ビルドには使われない。
+          BETTER_AUTH_SECRET: unused-at-build-time
+
+      - name: 起動できることを確かめる
+        run: |
+          docker run --rm --entrypoint node \
+            "${{ env.IMAGE_BASE }}:${{ steps.meta.outputs.sha_tag }}" --version
+          docker run --rm --entrypoint bun \
+            "${{ env.IMAGE_BASE }}-migrator:${{ steps.meta.outputs.sha_tag }}" --version
+
+      - name: 公開する
+        if: github.event_name != 'pull_request'
+        run: |
+          set -eu
+          SHA_TAG="${{ steps.meta.outputs.sha_tag }}"
+          VERSION_TAG="${{ steps.meta.outputs.version_tag }}"
+
+          # **2つのイメージには必ず同じタグを付ける。** ずれると、まだ無い
+          # カラムを前提にしたコードが動く。
+          for suffix in "" "-migrator"; do
+            IMAGE="${{ env.IMAGE_BASE }}${suffix}"
+            docker push "${IMAGE}:${SHA_TAG}"
+
+            if [ -n "${VERSION_TAG}" ]; then
+              docker tag "${IMAGE}:${SHA_TAG}" "${IMAGE}:${VERSION_TAG}"
+              docker push "${IMAGE}:${VERSION_TAG}"
+            fi
+          done
+
+      - name: ArgoCD に指定するタグ
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "### イメージ" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ env.IMAGE_BASE }}:${{ steps.meta.outputs.sha_tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ env.IMAGE_BASE }}-migrator:${{ steps.meta.outputs.sha_tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

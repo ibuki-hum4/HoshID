@@ -1,0 +1,34 @@
+# 秘密でない設定。秘密は SealedSecret（sealed-secret.example.yaml）へ。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hoshid-config
+  namespace: hoshid
+data:
+  # **issuer になる値。** ここを変えると、繋がっている RP の設定を全て
+  # 変えることになる。RP に渡す issuer は末尾に /api/auth が付いた
+  # https://hoshid.skyia.jp/api/auth であって、この値そのものではない。
+  BETTER_AUTH_URL: "https://hoshid.skyia.jp"
+
+  # **Traefik の Pod が属する CIDR。** ここを空にすると、クライアント IP を
+  # 特定できずレート制限が全員で1つのバケツになる（ログインは10秒3回）。
+  # 気づける形では壊れないので、クラスタの Pod CIDR を確認して必ず入れる。
+  #   kubectl get pod -n kube-system -l app.kubernetes.io/name=traefik -o wide
+  # プライベート帯を丸ごと書かないこと。そこに利用者が含まれると、
+  # 詐称されたヘッダを信じることになって設定の意味が消える。
+  TRUSTED_PROXIES: "10.42.0.0/16"
+
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+  # さくらのメールボックス。587 は STARTTLS なので SECURE は false。
+  # SMTP_USER と SMTP_PASS は対で Secret に入れる。
+  SMTP_HOST: "www1834.sakura.ne.jp"
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  MAIL_FROM: "HoshID <info@skyia.jp>"
+
+  # Discord のロール付与。ID は秘密ではない（Bot トークンだけが秘密）。
+  DISCORD_GUILD_ID: "1443079634605310076"
+  DISCORD_MEMBER_ROLE_ID: "1443103376245260348"
+  DISCORD_GUILD_INVITE_URL: "https://discord.gg/9QNrag6cMa"

@@ -1,0 +1,58 @@
+# Discord のロールを HoshID の状態に揃える。
+#
+# 平常時は要らない。承認・却下・ステータス変更・連携の追加と解除のたびに、
+# その場でロールは変わる。これは**ずれたときに直すため**のもの。
+#   - 承認した瞬間に Discord が落ちていた
+#   - Discord 側で手作業でロールを付けた・外した
+#   - 連携したあとにサーバへ参加した
+#
+# **--apply を付けている。** 付けないと数えるだけで終わる。初回は手で
+# `bun run discord:sync`（--apply なし）を流して、何人からロールが外れるかを
+# 必ず確かめてから有効にすること。
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hoshid-discord-sync
+  namespace: hoshid
+spec:
+  schedule: "17 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: sync
+              image: ghcr.io/OWNER/hoshid-migrator:v0.1.0
+              imagePullPolicy: IfNotPresent
+              command: ["bun", "run", "discord:sync", "--apply"]
+              envFrom:
+                - configMapRef:
+                    name: hoshid-config
+                - secretRef:
+                    name: hoshid-secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 256Mi
+                limits:
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

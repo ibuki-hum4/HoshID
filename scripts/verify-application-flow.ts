@@ -69,7 +69,7 @@ async function main() {
       password: PASSWORD,
       name: "Verify User",
       // 攻撃者が承認を自称しようとするケース
-      status: ACCOUNT_STATUS.approved,
+      status: ACCOUNT_STATUS.active,
     } as never,
   });
 
@@ -78,21 +78,32 @@ async function main() {
     select: { status: true, role: true, appliedAt: true },
   });
 
-  check("申請したユーザーは pending になる", applied?.status === ACCOUNT_STATUS.pending, applied);
-  check("status の詐称が無視される", applied?.status !== ACCOUNT_STATUS.approved, applied);
+  check("申請したユーザーは pending になる", applied?.status === ACCOUNT_STATUS.prepared, applied);
+  check("status の詐称が無視される", applied?.status !== ACCOUNT_STATUS.active, applied);
   check("appliedAt が記録される", applied?.appliedAt instanceof Date, applied);
 
   // 3: pending のままログインできないこと
   check("pending ではセッションが発行されない", (await trySignIn()) === false);
 
-  // 4: 承認すればログインできること
+  // 4: 承認しても、メールアドレスが未確認ならログインできないこと。
+  //
+  // **ステータスとメール確認は別の関門。** 片方だけでは足りない。ここが
+  // 通ってしまうと、他人のアドレスで申請したアカウントが承認されただけで
+  // そのアドレスを email クレームとして名乗れることになる。
   await prisma.user.update({
     where: { email: EMAIL },
-    data: { status: ACCOUNT_STATUS.approved },
+    data: { status: ACCOUNT_STATUS.active },
   });
-  check("approved にするとログインできる", (await trySignIn()) === true);
+  check("active でもメール未確認ならログインできない", (await trySignIn()) === false);
 
-  // 5: 却下すると再び入れなくなること
+  // 5: 両方そろえばログインできること
+  await prisma.user.update({
+    where: { email: EMAIL },
+    data: { emailVerified: true },
+  });
+  check("active かつメール確認済みならログインできる", (await trySignIn()) === true);
+
+  // 6: 却下すると再び入れなくなること
   await prisma.user.update({
     where: { email: EMAIL },
     data: { status: ACCOUNT_STATUS.rejected },

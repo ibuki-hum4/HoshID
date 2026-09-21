@@ -1,0 +1,115 @@
+# DB の日次バックアップ。
+#
+# **これだけでは足りない。** ダンプはクラスタ内の PVC に置かれるので、
+# クラスタごと失えば一緒に消える。クラスタの外へ持ち出す手段を必ず足すこと
+# （下のコメント）。それまでは「Pod が壊れたとき」にしか効かない。
+#
+# **ダンプとルート秘密は組で管理する。** DB の中には BETTER_AUTH_SECRET で
+# 暗号化された値（署名鍵、2FA の TOTP シークレット）が入っている。ダンプだけ
+# 戻しても中身が読めない。詳細と復元手順は docs/backup.md。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backups
+  namespace: hoshid
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      # アイコン画像を bytea で持っているぶんダンプが大きい。
+      # 世代数 × 1回分 で見積もる。
+      storage: 20Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: hoshid
+spec:
+  # 毎日 03:15（クラスタのタイムゾーン）。
+  schedule: "15 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+          containers:
+            - name: dump
+              # **サーバと同じメジャーバージョンを使う。** 古い pg_dump で
+              # 新しいサーバを取るとエラーで落ちる。
+              image: postgres:17-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  FILE="/backups/hoshid-$(date +%Y%m%d-%H%M%S).dump"
+
+                  # custom 形式。並列復元ができ、必要なテーブルだけ取り出せる。
+                  # --no-owner / --no-privileges で復元先のロール名に縛られない。
+                  pg_dump --format=custom --no-owner --no-privileges \
+                    --file="$FILE" "$DATABASE_URL"
+
+                  echo "書き出しました: $FILE ($(du -h "$FILE" | cut -f1))"
+
+                  # **空のダンプを成功として残さない。** 接続できていなくても
+                  # ファイルだけはできることがあり、気づくのは復元の時になる。
+                  if [ ! -s "$FILE" ]; then
+                    echo "ダンプが空です" >&2
+                    exit 1
+                  fi
+
+                  # 7世代より古いものを消す。
+                  find /backups -name 'hoshid-*.dump' -mtime +7 -delete
+
+                  echo "--- 保管中 ---"
+                  ls -lh /backups
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: hoshid-secrets
+                      key: DATABASE_URL
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+
+            # --- クラスタの外へ持ち出す（未設定）---
+            #
+            # ここを埋めるまで、このバックアップはクラスタと運命を共にする。
+            # rclone なり aws-cli なりで、ダンプをオブジェクトストレージへ送る。
+            #
+            # **送り先の暗号鍵を、BETTER_AUTH_SECRET と同じ場所に置かないこと。**
+            # 片方を取られたときに両方使えてしまう。
+            #
+            # - name: upload
+            #   image: rclone/rclone:latest
+            #   command: ["/bin/sh", "-c"]
+            #   args: ["rclone copy /backups remote:hoshid-backups --max-age 25h"]
+            #   volumeMounts:
+            #     - name: backups
+            #       mountPath: /backups
+            #     - name: rclone-config
+            #       mountPath: /config/rclone
+
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: postgres-backups

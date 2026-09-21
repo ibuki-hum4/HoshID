@@ -1,0 +1,27 @@
+# ビルドコンテキストから外すもの。
+#
+# **秘密を持つファイルを必ず含めること。** COPY . . でイメージに入ると、
+# イメージを読める全員に漏れる。イメージのレイヤは消しても履歴に残る。
+.env
+.env.*
+!.env.example
+
+.git
+.github
+node_modules
+.next
+.next-profiles
+out
+build
+
+# 開発機でだけ使うもの
+compose.dev.yaml
+docs
+k8s
+*.md
+!README.md
+
+# 生成物と一時ファイル
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*

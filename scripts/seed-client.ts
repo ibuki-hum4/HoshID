@@ -71,6 +71,27 @@ async function main() {
   console.log("\n--- OAuth client registered ---");
   console.log(JSON.stringify(client, null, 2));
   console.log("\nclient_secret はこの出力でしか取得できない。テスト RP に控えること。");
+
+  // CI から使うための逃げ道。標準出力は人が読む前提の形なので、機械に渡す
+  // ときはここでファイルに書く。**本番で使わないこと。** client_secret が
+  // 平文でディスクに残る。
+  const outputPath = process.env.SEED_CLIENT_OUTPUT;
+  if (outputPath) {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(
+      outputPath,
+      JSON.stringify(
+        {
+          HOSHID_CLIENT_ID: client.client_id,
+          HOSHID_CLIENT_SECRET: client.client_secret,
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    console.log(`資格情報を ${outputPath} に書き出しました。`);
+  }
 }
 
 main()

@@ -1,0 +1,58 @@
+# マイグレーションの適用と、鍵の保守。
+#
+# **アプリより先に、必ず終わってから**流す。ArgoCD の PreSync フックにして
+# あるので、Deployment の更新前に実行され、失敗すれば同期が止まる。
+# スキーマが古いまま新しいコードを立ち上げると「一部の画面だけ 500」という
+# 分かりにくい壊れ方をする。
+#
+# 中身（bun run deploy:prepare）:
+#   1. prisma migrate deploy
+#   2. 鍵の保守 — 期限の設定・暗号文の再暗号化・公開の終わった鍵の削除
+#      どれもべき等。**鍵の交換と失効は含まない**（人が判断すること）。
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hoshid-migrate
+  namespace: hoshid
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    # 成功した Job は次の同期まで残す。失敗したものはログを見たいので消さない。
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          # アプリとは別のイメージ。Prisma CLI とスクリプトを含む。
+          # **タグはアプリと必ず揃える。** ずれると、まだ無いカラムを前提に
+          # したコードが動くことになる。kustomization.yaml で両方まとめて指定。
+          image: ghcr.io/OWNER/hoshid-migrator:v0.1.0
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: hoshid-config
+            - secretRef:
+                name: hoshid-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

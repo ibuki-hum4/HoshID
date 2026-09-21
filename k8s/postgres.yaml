@@ -1,0 +1,102 @@
+# PostgreSQL。オペレータを使わず StatefulSet で立てる。
+#
+# **バックアップは自分で用意すること。** この構成は Pod と PVC があるだけで、
+# 復旧手段は含まない。PVC が飛べば全部消える。手順は docs/backup.md。
+# 最低限、pg_dump を CronJob で回してクラスタ外へ置く。
+#
+# **replicas は 1 のまま。** Postgres は複製の調停を自分でやらないので、
+# 数を増やすとデータが割れる。増やすならレプリケーションの設定か、
+# CloudNativePG のようなオペレータが要る。
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: hoshid
+spec:
+  # StatefulSet が安定した DNS 名を持つための headless Service。
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: hoshid
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      securityContext:
+        # postgres イメージの既定ユーザー。PVC の所有者を合わせる。
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+
+          env:
+            - name: POSTGRES_DB
+              value: hoshid
+            - name: POSTGRES_USER
+              value: hoshid
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: POSTGRES_PASSWORD
+            # 既定の /var/lib/postgresql/data をそのまま使うと、PVC の
+            # lost+found と衝突して初期化に失敗する。1段下げる。
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "hoshid", "-d", "hoshid"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "hoshid", "-d", "hoshid"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            # アイコン画像を bytea で持っているぶん、行が大きい。
+            storage: 10Gi

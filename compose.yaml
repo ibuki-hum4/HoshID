@@ -1,0 +1,79 @@
+# コンテナイメージのビルドと、本番に近い構成での起動。
+#
+#   docker compose build              2つのイメージを作る
+#   docker compose up -d              Postgres → migrator → app の順に起動
+#   docker compose run --rm migrator bun run jwks    鍵の状態を見る
+#
+# **これは本番の構成そのものではない。** 本番は k8s で、migrator は Job、
+# app は Deployment になる。ここで確かめるのは「イメージが正しく作れて、
+# 正しい順序で起動すれば動く」ことまで。
+#
+# 開発中の Postgres だけが欲しい場合は compose.dev.yaml を使う。
+
+name: hoshid
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hoshid
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hoshid}
+      POSTGRES_DB: hoshid
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoshid -d hoshid"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # マイグレーションと鍵の保守。一度走って終わる。
+  # k8s では Deployment ではなく Job にあたる。
+  migrator:
+    build:
+      context: .
+      target: migrator
+    image: ${HOSHID_IMAGE:-hoshid}-migrator:${HOSHID_IMAGE_TAG:-dev}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://hoshid:${POSTGRES_PASSWORD:-hoshid}@postgres:5432/hoshid
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_SECRETS: ${BETTER_AUTH_SECRETS:-}
+
+  app:
+    build:
+      context: .
+      target: runner
+    image: ${HOSHID_IMAGE:-hoshid}:${HOSHID_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    # migrator が正常終了してから起動する。スキーマが古いまま立ち上げると、
+    # 「一部の画面だけ 500」という分かりにくい壊れ方をする。
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    ports:
+      - "${HOSHID_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgres://hoshid:${POSTGRES_PASSWORD:-hoshid}@postgres:5432/hoshid
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_SECRETS: ${BETTER_AUTH_SECRETS:-}
+      # compose では app に直接繋ぐのでプロキシは無い。本番（Ingress の後ろ）
+      # では必ず設定すること。理由は lib/request-ip.ts。
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+
+volumes:
+  pgdata:

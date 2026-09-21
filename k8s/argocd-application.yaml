@@ -1,0 +1,61 @@
+# ArgoCD へ登録する Application。
+# これ自体はクラスタに手で適用する（`kubectl apply -f k8s/argocd-application.yaml`）。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hoshid
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # 最新の vX.Y.Z に追従する（ArgoCD Image Updater が必要）。
+    #
+    #   git tag v0.1.0 && git push origin v0.1.0
+    #     → CI が両方のイメージに v0.1.0 を付けて push
+    #     → Image Updater が拾って kustomization.yaml を書き換え、Git に commit
+    #     → ArgoCD が同期（PreSync でマイグレーションが先に走る）
+    #
+    # **allow-tags で vX.Y.Z だけに絞る。** 絞らないと sha- タグを新しい版と
+    # みなして拾い、コミットのたびに本番が動く。
+    argocd-image-updater.argoproj.io/image-list: >-
+      app=ghcr.io/OWNER/hoshid,
+      migrator=ghcr.io/OWNER/hoshid-migrator
+    argocd-image-updater.argoproj.io/app.update-strategy: semver
+    argocd-image-updater.argoproj.io/app.allow-tags: regexp:^v\d+\.\d+\.\d+$
+    argocd-image-updater.argoproj.io/migrator.update-strategy: semver
+    argocd-image-updater.argoproj.io/migrator.allow-tags: regexp:^v\d+\.\d+\.\d+$
+
+    # Git に書き戻す。**annotation に書く方式（argocd）は使わない。**
+    # あれだと「いま何が動いているか」がクラスタの状態にしか無く、
+    # Git を見ても分からなくなる。
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/write-back-target: kustomization
+    argocd-image-updater.argoproj.io/git-branch: main
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/OWNER/HoshID.git
+    targetRevision: main
+    path: k8s
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hoshid
+
+  syncPolicy:
+    automated:
+      prune: true
+      # **selfHeal は付けない。** 付けると、障害対応で手作業した変更が
+      # 勝手に戻される。Git に書いてから直す運用にする。
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true
+
+  # マイグレーションの Job は PreSync フックで、毎回作り直される。
+  # 完了済みの Job を差分として扱わせない。
+  ignoreDifferences:
+    - group: batch
+      kind: Job
+      jsonPointers:
+        - /spec/template/metadata/labels

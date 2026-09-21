@@ -38,8 +38,16 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 
+# k8s — 封をする前の平文。kubeseal に食わせるだけのもので、Git には入れない。
+# 封をした k8s/sealed-secret.yaml は入れてよい（クラスタの鍵でしか開けない）。
+k8s/secret.yaml
+
 # misc
 *.pem
+# Sealed Secrets の公開証明書。公開鍵なので入れてよく、
+# 入れておくとクラスタに繋がずに封をできる。
+!k8s/cert.pem
+k8s/secret.yaml
 
 # podman machine ssh on Windows drops its known_hosts write here
 NUL

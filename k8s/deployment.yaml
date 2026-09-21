@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hoshid
+  namespace: hoshid
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hoshid
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: hoshid
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          # タグは kustomization.yaml の images で差し替わる。
+          # 本番が追うのは vX.Y.Z（中身が入れ替わらないタグ）。
+          image: ghcr.io/OWNER/hoshid:v0.1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 3000
+
+          envFrom:
+            - configMapRef:
+                name: hoshid-config
+            - secretRef:
+                name: hoshid-secrets
+
+          # 起動時に鍵の点検が走る（instrumentation.ts）。DB が遅れていても
+          # 落ちない作りだが、startup probe で余裕を持たせる。
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 3
+            failureThreshold: 20
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+
+          # liveness は DB を見ない方が安全。DB が落ちただけで Pod が
+          # 再起動を繰り返しても何も直らない。TCP で生死だけ見る。
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 100m
+              # sharp と Argon2id がメモリを使う。Argon2id は1回あたり 19MiB を
+              # 確保する設定なので、同時ログインが重なると一気に伸びる。
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+          volumeMounts:
+            # Next.js と sharp が一時ファイルを書く。ルートを読み取り専用に
+            # しているので、書ける場所を明示的に与える。
+            - name: tmp
+              mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}

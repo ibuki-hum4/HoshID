@@ -157,6 +157,17 @@ async function main() {
   check("aud がクライアントと一致する", String(claims?.aud) === requireEnv("HOSHID_CLIENT_ID"));
   check("nonce が往復する", claims?.nonce === nonce);
 
+  // 認証方法のクレーム。標準の acr / amr はライブラリが予約していて
+  // 出せないため、名前空間付きの独自クレームで確認する。
+  const amr = (claims as Record<string, unknown> | undefined)?.hoshid_amr;
+  const acr = (claims as Record<string, unknown> | undefined)?.hoshid_acr;
+  check("hoshid_amr が入っている", Array.isArray(amr) && amr.length > 0, amr);
+  check(
+    "パスワードログインは pwd / 1fa になる",
+    Array.isArray(amr) && amr.includes("pwd") && acr === "hoshid:1fa",
+    { amr, acr },
+  );
+
   // --- UserInfo ---
   const userInfo = await client.fetchUserInfo(config, tokens.access_token, claims!.sub);
   check("UserInfo が sub を返す", userInfo.sub === claims!.sub);
@@ -200,6 +211,13 @@ async function main() {
     secondLocation.startsWith(REDIRECT_URI) && secondLocation.includes("code="),
     secondLocation,
   );
+
+  // 検証で作ったセッションを残さない。放置すると端末一覧が
+  // スクリプト由来のセッションで埋まる。
+  await fetch(`${ISSUER}/sign-out`, {
+    method: "POST",
+    headers: { origin: ORIGIN, cookie: cookieHeader() },
+  }).catch(() => undefined);
 
   await prisma.$disconnect();
 

@@ -14,7 +14,9 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
-    seed: "bun run scripts/seed.ts",
+    // seed は設定しない。初期データは目的別に分かれていて、どちらも
+    // 環境変数で中身を指定する（`bun run seed:admin` / `bun run seed:client`）。
+    // ひとつの seed にまとめると、何が作られるか分からないまま走る。
   },
   datasource: {
     url: env("DATABASE_URL"),

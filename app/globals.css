@@ -1,49 +1,112 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/*
+  配色の方針
+  ----------
+  基調は黒と白。色は「面」にだけ、ごく淡いピンクとして入れる。ボタンや文字は
+  無彩色のままにして、連携先アプリのブランド色と喧嘩しないようにする。
+
+  ダークモードは OS の設定に追従する（prefers-color-scheme）。将来に備えて
+  .dark / .light クラスによる明示指定も効くようにしてある。
+*/
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.5rem;
+
+  /* 面。ごく淡い桜色。彩度は 0.006 程度に抑え、色が付いていると意識させない。 */
+  --background: oklch(0.975 0.008 350);
+  --foreground: oklch(0.16 0.004 340);
+
+  /* カードは白。ガラス表現では透過させるので不透明の基準値を持たせる。 */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.16 0.004 340);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.16 0.004 340);
+
+  /* 主要ボタンは無彩色の黒。ここにピンクを入れない。 */
+  --primary: oklch(0.18 0.003 340);
+  --primary-foreground: oklch(0.99 0.002 350);
+
+  --secondary: oklch(0.955 0.011 350);
+  --secondary-foreground: oklch(0.22 0.005 340);
+  --muted: oklch(0.962 0.008 350);
+  --muted-foreground: oklch(0.52 0.012 340);
+  --accent: oklch(0.945 0.016 350);
+  --accent-foreground: oklch(0.22 0.006 340);
+
+  --destructive: oklch(0.58 0.2 20);
+
+  --border: oklch(0.88 0.01 350);
+  --input: oklch(0.9 0.008 350);
+  --ring: oklch(0.7 0.03 350);
+
+  /* ガラス面。背景を透かしつつ、文字が沈まない程度に白を残す。 */
+  --glass: oklch(1 0 0 / 88%);
+  --glass-border: oklch(1 0 0 / 65%);
+  --glass-blur: 12px;
+  /* ぼかしを使わない、安い半透明。カードなど数の多い要素はこちら。 */
+  --glass-soft: oklch(1 0 0 / 92%);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: oklch(0.155 0.006 340);
+    --foreground: oklch(0.96 0.004 350);
+
+    --card: oklch(0.2 0.008 340);
+    --card-foreground: oklch(0.96 0.004 350);
+    --popover: oklch(0.2 0.008 340);
+    --popover-foreground: oklch(0.96 0.004 350);
+
+    /* 暗い面では主要ボタンを白く抜く。 */
+    --primary: oklch(0.95 0.004 350);
+    --primary-foreground: oklch(0.18 0.006 340);
+
+    --secondary: oklch(0.26 0.012 340);
+    --secondary-foreground: oklch(0.96 0.004 350);
+    --muted: oklch(0.26 0.01 340);
+    --muted-foreground: oklch(0.72 0.014 345);
+    --accent: oklch(0.3 0.018 345);
+    --accent-foreground: oklch(0.96 0.004 350);
+
+    --destructive: oklch(0.68 0.19 22);
+
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 16%);
+    --ring: oklch(0.55 0.03 345);
+
+    --glass: oklch(0.24 0.01 340 / 62%);
+    --glass-border: oklch(1 0 0 / 12%);
+    --glass-soft: oklch(0.22 0.009 340 / 78%);
+  }
+}
+
+/* 明示指定。設定画面を作ったときに使う。 */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.155 0.006 340);
+  --foreground: oklch(0.96 0.004 350);
+  --card: oklch(0.2 0.008 340);
+  --card-foreground: oklch(0.96 0.004 350);
+  --popover: oklch(0.2 0.008 340);
+  --popover-foreground: oklch(0.96 0.004 350);
+  --primary: oklch(0.95 0.004 350);
+  --primary-foreground: oklch(0.18 0.006 340);
+  --secondary: oklch(0.26 0.012 340);
+  --secondary-foreground: oklch(0.96 0.004 350);
+  --muted: oklch(0.26 0.01 340);
+  --muted-foreground: oklch(0.72 0.014 345);
+  --accent: oklch(0.3 0.018 345);
+  --accent-foreground: oklch(0.96 0.004 350);
+  --destructive: oklch(0.68 0.19 22);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.55 0.03 345);
+  --glass: oklch(0.24 0.01 340 / 62%);
+  --glass-border: oklch(1 0 0 / 12%);
+  --glass-soft: oklch(0.22 0.009 340 / 78%);
 }
 
 @theme inline {
@@ -71,11 +134,74 @@
   --color-ring: var(--ring);
 }
 
+/*
+  ガラス面には 2 種類ある。使い分けを間違えると低スペック機で目に見えて重くなる。
+
+  `glass` は backdrop-filter を使う本物のすりガラス。**画面に数個だけ**に留める
+  （固定ヘッダー、タブ）。要素ごとに背後を再合成するため、数が増えるほど
+  スクロールが重くなる。
+
+  `glass-soft` は半透明なだけでぼかさない。カードや表の枠のように数が多いもの、
+  スクロールに追従して動くものはこちら。見た目の差は小さく、負荷の差は大きい。
+*/
+@utility glass {
+  background-color: var(--glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border-color: var(--glass-border);
+}
+
+@utility glass-soft {
+  background-color: var(--glass-soft);
+  border-color: var(--glass-border);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /*
+    見出しは階層を持たせる。画面内で一番言いたいことが一目で分かるように、
+    h1 と h2 の差を明確に取る。
+
+    **太さで差を作る。** 飾りや罫線を足さずに字面だけで階層が読めると、
+    画面の要素が減って結果的に静かになる。
+    各ページで text-2xl などを書き直さないこと。ここが効かなくなる。
+  */
+  h1 {
+    @apply text-foreground text-2xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-foreground text-base font-bold tracking-tight;
+  }
+
+  /*
+    動きを減らす。OS 側の設定と、設定画面での明示指定の両方を見る。
+    OS で減らしている人の意思は、アプリ側の設定より優先する。
+  */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  .reduce-motion *,
+  .reduce-motion *::before,
+  .reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

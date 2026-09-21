@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hoshid
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - backup-cronjob.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - migrate-job.yaml
+  - discord-sync-cronjob.yaml
+  # kubeseal で作ったら追加する。**secret.yaml（平文）は絶対に入れない。**
+  # - sealed-secret.yaml
+
+# **ここは ArgoCD Image Updater が書き換える。** 最新の vX.Y.Z を見つけると
+# Git に commit する（設定は argocd-application.yaml の annotation）。
+#
+# 手で変えてもよいが、その場合も vX.Y.Z を指すこと。ブランチ名や latest を
+# 指すと、同じタグの中身が入れ替わって追えなくなる。
+#
+# アプリと migrator は必ず同じタグ。ずれると、まだ無いカラムを前提にした
+# コードが動く。CI は両方に同じタグを付けて push する。
+images:
+  - name: ghcr.io/OWNER/hoshid
+    newTag: v0.1.0
+  - name: ghcr.io/OWNER/hoshid-migrator
+    newTag: v0.1.0

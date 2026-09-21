@@ -15,7 +15,7 @@ export const metadata = { title: "申請を受け付けました" };
 
 export default function ApplySubmittedPage() {
   return (
-    <Card className="rounded-3xl text-center shadow-sm">
+    <Card className="text-center">
       <CardHeader>
         <div className="bg-muted mx-auto flex size-12 items-center justify-center rounded-full">
           <MailCheck className="size-6" aria-hidden />
@@ -33,7 +33,7 @@ export default function ApplySubmittedPage() {
       </CardContent>
 
       <CardFooter>
-        <Button asChild variant="ghost" className="mx-auto rounded-full">
+        <Button asChild variant="ghost" className="mx-auto">
           <Link href="/sign-in">ログイン画面へ戻る</Link>
         </Button>
       </CardFooter>

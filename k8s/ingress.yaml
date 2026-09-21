@@ -1,0 +1,35 @@
+# Traefik。IngressRoute（Traefik の CRD）ではなく標準の Ingress を使う。
+# Traefik の ACME でも cert-manager でも、後から切り替えられるため。
+#
+# **証明書の出所はクラスタ側の設定に合わせること。**
+#   - Traefik 内蔵の ACME を使う場合: cert-resolver の annotation を有効にする
+#   - cert-manager を使う場合: cert-manager.io/cluster-issuer の annotation にする
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hoshid
+  namespace: hoshid
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # Traefik 内蔵の ACME を使う場合。resolver 名はクラスタの設定に合わせる。
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # cert-manager を使う場合はこちらに差し替える。
+    # cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - hoshid.skyia.jp
+      secretName: hoshid-tls
+  rules:
+    - host: hoshid.skyia.jp
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hoshid
+                port:
+                  name: http
