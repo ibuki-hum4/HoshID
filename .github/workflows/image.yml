@@ -33,8 +33,9 @@ concurrency:
   group: image-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  IMAGE_BASE: ghcr.io/${{ github.repository }}
+# IMAGE_BASE はここで決められない。**Docker はリポジトリ名に大文字を許さず**、
+# github.repository は "ibuki-hum4/HoshID" のように元の綴りで来る。
+# Actions に小文字化の式が無いので、最初のステップで作って GITHUB_ENV へ渡す。
 
 jobs:
   build:
@@ -54,6 +55,11 @@ jobs:
         id: meta
         run: |
           set -eu
+
+          # Docker はリポジトリ名に大文字を許さない。github.repository は
+          # 元の綴り（HoshID）で来るので、ここで小文字に落とす。
+          echo "IMAGE_BASE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
           SHA_TAG="sha-$(git rev-parse --short HEAD)"
           echo "sha_tag=${SHA_TAG}" >> "$GITHUB_OUTPUT"
 

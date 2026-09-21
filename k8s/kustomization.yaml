@@ -13,8 +13,8 @@ resources:
   - ingress.yaml
   - migrate-job.yaml
   - discord-sync-cronjob.yaml
-  # kubeseal で作ったら追加する。**secret.yaml（平文）は絶対に入れない。**
-  # - sealed-secret.yaml
+  # 封をしたもの。**secret.yaml（平文）は絶対に入れない。**
+  - sealed-secret.yaml
 
 # **ここは ArgoCD Image Updater が書き換える。** 最新の vX.Y.Z を見つけると
 # Git に commit する（設定は argocd-application.yaml の annotation）。
@@ -25,7 +25,7 @@ resources:
 # アプリと migrator は必ず同じタグ。ずれると、まだ無いカラムを前提にした
 # コードが動く。CI は両方に同じタグを付けて push する。
 images:
-  - name: ghcr.io/OWNER/hoshid
+  - name: ghcr.io/ibuki-hum4/hoshid
     newTag: v0.1.0
-  - name: ghcr.io/OWNER/hoshid-migrator
+  - name: ghcr.io/ibuki-hum4/hoshid-migrator
     newTag: v0.1.0

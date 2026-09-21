@@ -18,8 +18,8 @@ metadata:
     # **allow-tags で vX.Y.Z だけに絞る。** 絞らないと sha- タグを新しい版と
     # みなして拾い、コミットのたびに本番が動く。
     argocd-image-updater.argoproj.io/image-list: >-
-      app=ghcr.io/OWNER/hoshid,
-      migrator=ghcr.io/OWNER/hoshid-migrator
+      app=ghcr.io/ibuki-hum4/hoshid,
+      migrator=ghcr.io/ibuki-hum4/hoshid-migrator
     argocd-image-updater.argoproj.io/app.update-strategy: semver
     argocd-image-updater.argoproj.io/app.allow-tags: regexp:^v\d+\.\d+\.\d+$
     argocd-image-updater.argoproj.io/migrator.update-strategy: semver
@@ -35,7 +35,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/OWNER/HoshID.git
+    repoURL: https://github.com/ibuki-hum4/HoshID.git
     targetRevision: main
     path: k8s
 
