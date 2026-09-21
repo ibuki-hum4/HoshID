@@ -34,11 +34,14 @@
     "secrets:reencrypt": "bun run scripts/reencrypt-secrets.ts",
     "verify:jwks": "bun run scripts/verify-jwks-roundtrip.ts",
     "verify:secrets": "bun run scripts/verify-secrets-readable.ts",
-    "discord:sync": "bun run scripts/discord-sync.ts"
+    "discord:sync": "bun run scripts/discord-sync.ts",
+    "bot": "bun run bot/index.ts"
   },
   "dependencies": {
     "@better-auth/oauth-provider": "1.7.5",
     "@better-auth/passkey": "1.7.5",
+    "@discordjs/rest": "2.6.3",
+    "@discordjs/ws": "2.0.4",
     "@hookform/resolvers": "5.9.1",
     "@node-rs/argon2": "2.2.1",
     "@prisma/adapter-pg": "7.10.0",

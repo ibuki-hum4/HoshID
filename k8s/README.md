@@ -122,6 +122,7 @@ kubectl -n hoshid run discord-check --rm -it --restart=Never \
 | `migrate-job.yaml` | マイグレーション＋鍵の保守。ArgoCD の PreSync |
 | `backup-cronjob.yaml` | 日次の `pg_dump`。7世代 |
 | `discord-sync-cronjob.yaml` | Discord ロールの突き合わせ。毎時 |
+| `bot-deployment.yaml` | Discord の Gateway に繋ぐだけの常駐（オンライン表示用） |
 | `configmap.yaml` | 秘密でない設定 |
 | `secret.yaml` | 平文。**Git に入れない**（封をする元） |
 | `sealed-secret.yaml` | 封をしたもの。Git に入れる |

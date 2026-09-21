@@ -83,6 +83,9 @@ COPY package.json bun.lock tsconfig.json prisma.config.ts ./
 COPY prisma ./prisma
 COPY lib ./lib
 COPY scripts ./scripts
+# 常駐 Bot もこのイメージから動かす（`bun run bot`）。専用イメージを足すほどの
+# 中身が無く、bun と node_modules を共有できる。
+COPY bot ./bot
 
 # マイグレーションの適用と、鍵の保守（期限の設定・再暗号化・古い行の削除）。
 # どれもべき等なので、デプロイのたびに実行してよい。

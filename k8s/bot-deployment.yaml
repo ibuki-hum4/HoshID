@@ -1,0 +1,67 @@
+# Discord の Gateway に繋ぎ続けるだけの常駐。
+#
+# **見た目のためだけにある。** Discord がメンバー一覧で Bot をオンライン表示
+# するのは Gateway に繋いでいる間だけで、REST を叩いてもオンラインにならない。
+#
+# **ロールの付け外しはここでは行わない。** 承認・却下・ステータス変更・連携の
+# 追加と解除のたびに、アプリが REST で直接行っている。これが落ちていても
+# ロールは正しく付く。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hoshid-bot
+  namespace: hoshid
+spec:
+  # **1つだけ。** 同じトークンで複数の Gateway 接続を張ると、Discord 側で
+  # セッションが奪い合いになって切断を繰り返す。
+  replicas: 1
+  strategy:
+    # 新旧が同時に繋がないよう、先に古い方を落とす。
+    type: Recreate
+  selector:
+    matchLabels:
+      app: hoshid-bot
+  template:
+    metadata:
+      labels:
+        app: hoshid-bot
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bot
+          image: ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.1
+          imagePullPolicy: IfNotPresent
+          command: ["bun", "run", "bot"]
+
+          env:
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hoshid-secrets
+                  key: DISCORD_BOT_TOKEN
+
+          # DB にも HTTP にも口を持たない。probe は付けられないので、
+          # 落ちたら再起動に任せる。表示が消えるだけで実害は無い。
+          resources:
+            requests:
+              cpu: 25m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}

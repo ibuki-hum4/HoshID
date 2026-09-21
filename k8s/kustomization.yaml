@@ -13,6 +13,7 @@ resources:
   - ingress.yaml
   - migrate-job.yaml
   - discord-sync-cronjob.yaml
+  - bot-deployment.yaml
   # 封をしたもの。**secret.yaml（平文）は絶対に入れない。**
   - sealed-secret.yaml
 
@@ -26,6 +27,6 @@ resources:
 # コードが動く。CI は両方に同じタグを付けて push する。
 images:
   - name: ghcr.io/ibuki-hum4/hoshid
-    newTag: v0.1.1
+    newTag: v0.1.2
   - name: ghcr.io/ibuki-hum4/hoshid-migrator
-    newTag: v0.1.1
+    newTag: v0.1.2
