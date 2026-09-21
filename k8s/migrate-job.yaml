@@ -35,6 +35,9 @@ spec:
       restartPolicy: Never
       securityContext:
         runAsNonRoot: true
+        # 数値で指定する。名前だと kubelet が解決できず起動しない。
+        runAsUser: 1000
+        runAsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:

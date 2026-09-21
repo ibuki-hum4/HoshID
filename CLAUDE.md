@@ -454,6 +454,16 @@ compose.dev.yaml               dev 用 PostgreSQL（Podman / network_mode: host�
   ビルド時は明らかに偽の値を渡している。ページは全て動的なので出力には焼き込まれない。
 - **CI のビルド定義は compose.yaml にひとつだけ置く。** ワークフロー側に
   Dockerfile の引数を書き写すと、必ず片方が古くなる。
+- **`USER` は数値で書く。** k8s の `runAsNonRoot` はイメージの USER を見るが、
+  **kubelet はユーザー名を解決できない。** `USER node` や `USER bun` にすると
+  「root で動く」と判定されて Pod が起動しない
+  （`container has runAsNonRoot and image will run as root`。実際に踏んだ）。
+  マニフェスト側にも `runAsUser: 1000` を明示して、イメージだけに頼らない。
+- **マイグレーションは PreSync フックにしない。** PreSync は通常リソースより前に
+  走るので、初回の同期では ConfigMap も Secret もまだ無く
+  `configmap "hoshid-config" not found` で落ちる（実際に踏んだ）。
+  `hook: Sync` + `sync-wave` で順序を付ける（0: 設定と DB / 1: マイグレーション /
+  2: アプリ）。
 - **ArgoCD には `sha-<短いSHA>` タグを指す。** ブランチ名や `latest` を指すと、同じ
   タグの中身が入れ替わって「いつのイメージが動いているか」が追えなくなる。
 - **この開発機では buildkit のコンテナを作れない**（WSL カーネルに nf_tables が無く

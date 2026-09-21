@@ -28,6 +28,10 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        # **数値で指定する。** イメージ側の USER だけに頼ると、名前で書かれて
+        # いた場合に kubelet が解決できず「root で動く」と判定されて起動しない。
+        runAsUser: 1000
+        runAsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
