@@ -15,8 +15,18 @@ metadata:
   name: hoshid-migrate
   namespace: hoshid
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    # 成功した Job は次の同期まで残す。失敗したものはログを見たいので消さない。
+    # **PreSync にしない。** あれは通常リソースより前に走るので、初回の同期で
+    # ConfigMap も Secret もまだ無く、`configmap "hoshid-config" not found` で
+    # 落ちる（実際に踏んだ）。
+    #
+    # Sync フック + sync-wave なら、通常リソースと同じ流れの中で順序を付けられる。
+    #   wave 0  ConfigMap / SealedSecret / PostgreSQL
+    #   wave 1  このジョブ（DB が Healthy になってから）
+    #   wave 2  アプリ本体
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/sync-wave: "1"
+    # 前回の Job を消してから作る。Job の spec は変更できないので、
+    # 消さずに再適用すると immutable のエラーになる。
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 2

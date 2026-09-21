@@ -3,6 +3,11 @@ kind: Deployment
 metadata:
   name: hoshid
   namespace: hoshid
+  annotations:
+    # マイグレーション（wave 1）が終わってから起動する。スキーマが古いまま
+    # 新しいコードを立ち上げると「一部の画面だけ 500」という分かりにくい
+    # 壊れ方をする。
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: 2
   selector:
