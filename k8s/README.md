@@ -77,7 +77,7 @@ MicroK8s の既定は `10.1.0.0/16`（Calico）なので、そのままのはず
 kubectl apply -f k8s/argocd-application.yaml
 
 kubectl -n hoshid run seed --rm -it --restart=Never \
-  --image=ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.0 \
+  --image=ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.1 \
   --env=SEED_ADMIN_EMAIL=... --env=SEED_ADMIN_PASSWORD=... \
   --overrides='{"spec":{"containers":[{"name":"seed","envFrom":[{"secretRef":{"name":"hoshid-secrets"}},{"configMapRef":{"name":"hoshid-config"}}]}]}}' \
   -- bun run seed:admin
@@ -89,7 +89,7 @@ kubectl -n hoshid run seed --rm -it --restart=Never \
 
 ```bash
 kubectl -n hoshid run discord-check --rm -it --restart=Never \
-  --image=ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.0 \
+  --image=ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.1 \
   -- bun run discord:sync
 ```
 

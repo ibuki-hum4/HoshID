@@ -32,7 +32,7 @@ spec:
           # アプリとは別のイメージ。Prisma CLI とスクリプトを含む。
           # **タグはアプリと必ず揃える。** ずれると、まだ無いカラムを前提に
           # したコードが動くことになる。kustomization.yaml で両方まとめて指定。
-          image: ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.0
+          image: ghcr.io/ibuki-hum4/hoshid-migrator:v0.1.1
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
