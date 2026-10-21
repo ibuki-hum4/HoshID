@@ -69,9 +69,22 @@ export function isSocialConfigured(provider: SocialProvider): boolean {
   return credentials(provider) !== null;
 }
 
-export function redirectUri(provider: SocialProvider): string {
+/**
+ * 公開 URL。
+ *
+ * **リクエストから組み立てないこと。** コンテナの中では `request.url` が
+ * 待ち受けアドレス（`0.0.0.0:3000`）になることがあり、そこへリダイレクトすると
+ * ブラウザは開けない（実際に踏んだ）。Host ヘッダを見る形にしても、今度は
+ * 詐称された値で外へ飛ばせてしまう。**公開 URL は設定であって、リクエストから
+ * 推測するものではない。**
+ */
+export function publicUrl(path: string): string {
   const base = (process.env.BETTER_AUTH_URL ?? "").replace(/\/$/, "");
-  return `${base}/api/link/${provider}/callback`;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export function redirectUri(provider: SocialProvider): string {
+  return publicUrl(`/api/link/${provider}/callback`);
 }
 
 // --- state（往復のあいだ預ける値） ------------------------------------------

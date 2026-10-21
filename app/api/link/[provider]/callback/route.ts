@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import {
   decodeLinkState,
   fetchSocialProfile,
+  publicUrl,
   safeReturnTo,
   saveSocialLink,
 } from "@/lib/social";
@@ -31,7 +32,9 @@ export async function GET(
   const url = new URL(request.url);
 
   const back = (params: Record<string, string>, returnTo = "/lounge/account") => {
-    const target = new URL(returnTo, url.origin);
+    // 戻り先は設定の公開 URL から組み立てる。request.url はコンテナの中だと
+    // 待ち受けアドレス（0.0.0.0:3000）になることがあり、そこへ飛ばすと開けない。
+    const target = new URL(publicUrl(returnTo));
     for (const [key, value] of Object.entries(params)) {
       target.searchParams.set(key, value);
     }

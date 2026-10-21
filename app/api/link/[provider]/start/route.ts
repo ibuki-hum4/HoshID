@@ -6,6 +6,7 @@ import {
   buildAuthorizeUrl,
   encodeLinkState,
   isSocialConfigured,
+  publicUrl,
   safeReturnTo,
 } from "@/lib/social";
 import { isSocialProvider } from "@/lib/social-providers";
@@ -42,7 +43,9 @@ export async function GET(
 
   const userId = await resolveUserId();
   if (!userId) {
-    return NextResponse.redirect(new URL("/sign-in", url.origin));
+    // 公開 URL は設定から取る。request.url はコンテナの中だと待ち受け
+    // アドレス（0.0.0.0:3000）になることがある。
+    return NextResponse.redirect(publicUrl("/sign-in"));
   }
 
   // state と対にして Cookie に置く。state だけでも userId に縛られている
@@ -59,7 +62,8 @@ export async function GET(
   (await cookies()).set(LINK_NONCE_COOKIE, nonce, {
     httpOnly: true,
     sameSite: "lax",
-    secure: url.protocol === "https:",
+    // ここも request.url を見ない。プロキシの内側は平文でも、外は https。
+    secure: publicUrl("/").startsWith("https://"),
     path: "/",
     maxAge: 10 * 60,
   });
