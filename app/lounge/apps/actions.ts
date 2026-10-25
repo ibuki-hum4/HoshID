@@ -17,6 +17,10 @@ export type SimpleResult = { ok: true } | { ok: false; message: string };
 
 const ALLOWED_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
 
+/** コンフィデンシャルクライアントのシークレットの送り方。作成後は変更できない。 */
+const ALLOWED_AUTH_METHODS = ["client_secret_basic", "client_secret_post"] as const;
+export type TokenEndpointAuthMethod = (typeof ALLOWED_AUTH_METHODS)[number];
+
 /** Better Auth が返すエラーから、利用者に見せてよい説明だけを取り出す。 */
 function describeError(error: unknown, fallback: string): string {
   const body = (error as { body?: { error_description?: string; message?: string } })
@@ -24,11 +28,47 @@ function describeError(error: unknown, fallback: string): string {
   return body?.error_description ?? body?.message ?? fallback;
 }
 
+/**
+ * 入力されたリダイレクト URI を整え、application_type を決める。作成と編集で共有する。
+ *
+ * https のみ・http は localhost のみ、といった判定そのものは Better Auth が
+ * application_type に応じて行う。ここで application_type を決め損なうと、
+ * 正しい URI まで弾かれる。
+ */
+function resolveRedirectUris(
+  input: string[],
+):
+  | { ok: true; redirectUris: string[]; applicationType: "native" | "web" }
+  | { ok: false; message: string } {
+  const redirectUris = input.map((uri) => uri.trim()).filter(Boolean);
+  if (redirectUris.length === 0) {
+    return { ok: false, message: "リダイレクト URI を1つ以上入力してください。" };
+  }
+
+  // ループバックへの http は application_type: "native" でしか許されない。
+  // 逆に公開ホストの https は "web" 扱いにしないと弾かれる。
+  const isLoopback = redirectUris.every((uri) => {
+    try {
+      const { hostname, protocol } = new URL(uri);
+      return (
+        protocol === "http:" &&
+        (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]")
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  return { ok: true, redirectUris, applicationType: isLoopback ? "native" : "web" };
+}
+
 export async function createApp(input: {
   clientName: string;
   redirectUris: string[];
   scopes: string[];
   publicClient: boolean;
+  /** publicClient が false のときだけ使う。true なら "none" 固定。 */
+  tokenEndpointAuthMethod: TokenEndpointAuthMethod;
   /** false にすると PKCE 無しでも認可を通す。旧式アプリ向けの逃げ道。 */
   requirePkce: boolean;
   /** サーバ間通信用。利用者の同意を挟まずにトークンを取れる。 */
@@ -49,9 +89,9 @@ export async function createApp(input: {
     return { ok: false, message: "アプリ名は80文字以内にしてください。" };
   }
 
-  const redirectUris = input.redirectUris.map((uri) => uri.trim()).filter(Boolean);
-  if (redirectUris.length === 0) {
-    return { ok: false, message: "リダイレクト URI を1つ以上入力してください。" };
+  const resolved = resolveRedirectUris(input.redirectUris);
+  if (!resolved.ok) {
+    return resolved;
   }
 
   const scopes = input.scopes.filter((scope) =>
@@ -61,28 +101,21 @@ export async function createApp(input: {
     return { ok: false, message: "openid は必須です。" };
   }
 
-  // ループバックへの http は application_type: "native" でしか許されない。
-  // 逆に公開ホストの https は "web" 扱いにしないと弾かれる。
-  const isLoopback = redirectUris.every((uri) => {
-    try {
-      const { hostname, protocol } = new URL(uri);
-      return (
-        protocol === "http:" &&
-        (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]")
-      );
-    } catch {
-      return false;
-    }
-  });
+  if (
+    !input.publicClient &&
+    !(ALLOWED_AUTH_METHODS as readonly string[]).includes(input.tokenEndpointAuthMethod)
+  ) {
+    return { ok: false, message: "シークレットの送り方を選んでください。" };
+  }
 
   try {
     const client = await auth.api.createOAuthClient({
       headers: await headers(),
       body: {
         client_name: clientName,
-        redirect_uris: redirectUris,
+        redirect_uris: resolved.redirectUris,
         scope: scopes.join(" "),
-        application_type: isLoopback ? "native" : "web",
+        application_type: resolved.applicationType,
         // 使う grant だけを許可する。増やすほど攻撃面が広がる。
         grant_types: [
           "authorization_code",
@@ -96,7 +129,9 @@ export async function createApp(input: {
           ? { client_credentials_scopes: scopes.filter((s) => s !== "openid") }
           : {}),
         // パブリッククライアントはシークレットを持てない。PKCE だけで守る。
-        ...(input.publicClient ? { token_endpoint_auth_method: "none" } : {}),
+        token_endpoint_auth_method: input.publicClient
+          ? "none"
+          : input.tokenEndpointAuthMethod,
         ...(input.clientUri ? { client_uri: input.clientUri } : {}),
       },
     });
@@ -158,6 +193,198 @@ export async function deleteApp(clientId: string): Promise<SimpleResult> {
     targetType: "oauthClient",
     targetId: clientId,
     targetLabel: target?.name ?? clientId,
+  });
+
+  revalidatePath("/lounge/apps");
+  return { ok: true };
+}
+
+/**
+ * シークレットを作り直す。旧シークレットは即座に使えなくなる。
+ * 所有者の確認は Better Auth が行う（他人のアプリは UNAUTHORIZED）。
+ */
+export async function rotateAppSecret(
+  clientId: string,
+): Promise<{ ok: true; clientSecret: string } | { ok: false; message: string }> {
+  const actor = await requireApprovedUser();
+
+  let clientSecret: string | undefined;
+  let clientName: string | undefined;
+  try {
+    const client = await auth.api.rotateClientSecret({
+      headers: await headers(),
+      body: { client_id: clientId },
+    });
+    clientSecret = client.client_secret;
+    clientName = client.client_name;
+  } catch (error) {
+    return { ok: false, message: describeError(error, "再発行できませんでした。") };
+  }
+
+  if (!clientSecret) {
+    return { ok: false, message: "再発行できませんでした。" };
+  }
+
+  // シークレット本体は記録しない。
+  await recordAudit({
+    actor,
+    action: "client.rotate-secret",
+    targetType: "oauthClient",
+    targetId: clientId,
+    targetLabel: clientName ?? clientId,
+  });
+
+  return { ok: true, clientSecret };
+}
+
+/** リダイレクト URI を差し替える。検証は作成時と同じ（resolveRedirectUris）。 */
+export async function updateRedirectUris(
+  clientId: string,
+  redirectUris: string[],
+): Promise<SimpleResult> {
+  const actor = await requireApprovedUser();
+
+  const resolved = resolveRedirectUris(redirectUris);
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  // 監査ログに変更前を残すため、更新の前に読む。
+  const before = await prisma.oauthClient.findFirst({
+    where: { clientId, userId: actor.id },
+    select: { name: true, redirectUris: true },
+  });
+  if (!before) {
+    return { ok: false, message: "対象のアプリが見つかりませんでした。" };
+  }
+
+  try {
+    await auth.api.updateOAuthClient({
+      headers: await headers(),
+      body: {
+        client_id: clientId,
+        update: {
+          redirect_uris: resolved.redirectUris,
+          // 作成時の値のままだと、Web アプリに localhost を足しただけで弾かれる。
+          application_type: resolved.applicationType,
+        },
+      },
+    });
+  } catch (error) {
+    return { ok: false, message: describeError(error, "変更できませんでした。") };
+  }
+
+  // URI は秘密ではない。乗っ取られて書き換えられたときに辿れるよう、前後を残す。
+  await recordAudit({
+    actor,
+    action: "client.update-redirect-uris",
+    targetType: "oauthClient",
+    targetId: clientId,
+    targetLabel: before.name ?? clientId,
+    detail: `${before.redirectUris.join(" ")} → ${resolved.redirectUris.join(" ")}`,
+  });
+
+  revalidatePath("/lounge/apps");
+  return { ok: true };
+}
+
+/**
+ * 所有者がアプリを一時停止・再開する。
+ *
+ * Better Auth には disabled を変える API が無い（adminUpdateOAuthClient の
+ * 更新項目にも含まれない）ので、所有者本人のレコードだけを直接更新する。
+ * **管理者が止めたアプリは再開させない。** 不正なアプリを止めても本人が
+ * すぐ戻せるのでは意味がない。
+ */
+export async function setAppDisabled(
+  clientId: string,
+  disabled: boolean,
+): Promise<SimpleResult> {
+  const actor = await requireApprovedUser();
+
+  const client = await prisma.oauthClient.findFirst({
+    where: { clientId, userId: actor.id },
+    select: { name: true },
+  });
+  if (!client) {
+    return { ok: false, message: "対象のアプリが見つかりませんでした。" };
+  }
+
+  if (!disabled) {
+    const trust = await prisma.oauthClientTrust.findUnique({
+      where: { clientId },
+      select: { adminDisabled: true },
+    });
+    if (trust?.adminDisabled) {
+      return {
+        ok: false,
+        message: "管理者が停止しているため再開できません。管理者に問い合わせてください。",
+      };
+    }
+  }
+
+  await prisma.oauthClient.updateMany({
+    where: { clientId, userId: actor.id },
+    data: { disabled },
+  });
+
+  await recordAudit({
+    actor,
+    action: disabled ? "client.disable" : "client.enable",
+    targetType: "oauthClient",
+    targetId: clientId,
+    targetLabel: client.name ?? clientId,
+  });
+
+  revalidatePath("/lounge/apps");
+  return { ok: true };
+}
+
+/**
+ * 管理者がアプリを停止・再開する。他人のアプリにも効く。
+ *
+ * 止めている間は adminDisabled の印を立て、所有者が自分で再開できないようにする。
+ * 解除すると停止そのものも解く。
+ */
+export async function setClientAdminDisabled(
+  clientId: string,
+  disabled: boolean,
+): Promise<SimpleResult> {
+  const actor = await requirePermission({ oauthClient: ["list-all"] });
+
+  const client = await prisma.oauthClient.findUnique({
+    where: { clientId },
+    select: { name: true },
+  });
+  if (!client) {
+    return { ok: false, message: "対象のアプリが見つかりませんでした。" };
+  }
+
+  const mark = {
+    adminDisabled: disabled,
+    adminDisabledBy: disabled ? actor.id : null,
+    adminDisabledAt: disabled ? new Date() : null,
+  };
+
+  await prisma.$transaction([
+    prisma.oauthClientTrust.upsert({
+      where: { clientId },
+      create: { clientId, ...mark },
+      update: mark,
+    }),
+    prisma.oauthClient.update({
+      where: { clientId },
+      data: { disabled },
+    }),
+  ]);
+
+  await recordAudit({
+    actor,
+    action: disabled ? "client.disable" : "client.enable",
+    targetType: "oauthClient",
+    targetId: clientId,
+    targetLabel: client.name ?? clientId,
+    detail: disabled ? "管理者による停止（所有者は再開できない）" : "管理者による停止を解除",
   });
 
   revalidatePath("/lounge/apps");

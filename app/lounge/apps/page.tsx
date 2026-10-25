@@ -23,10 +23,28 @@ export default async function AppsPage() {
   const canListAll = await hasPermission({ oauthClient: ["list-all"] });
 
   const trusts = canListAll
-    ? await prisma.oauthClientTrust.findMany({ select: { clientId: true, verified: true } })
+    ? await prisma.oauthClientTrust.findMany({
+        select: { clientId: true, verified: true, adminDisabled: true },
+      })
     : [];
   const verifiedIds = new Set(
     trusts.filter((trust) => trust.verified).map((trust) => trust.clientId),
+  );
+
+  // 管理者が止めたアプリは、所有者の画面でも再開スイッチを塞ぐ。
+  const adminDisabledIds = new Set(
+    (canListAll
+      ? trusts
+      : await prisma.oauthClientTrust.findMany({
+          where: {
+            clientId: { in: clients.map((client) => client.client_id) },
+            adminDisabled: true,
+          },
+          select: { clientId: true, adminDisabled: true },
+        })
+    )
+      .filter((trust) => trust.adminDisabled)
+      .map((trust) => trust.clientId),
   );
 
   const allClients = canListAll
@@ -68,6 +86,7 @@ export default async function AppsPage() {
           isPublic: client.token_endpoint_auth_method === "none",
           requirePkce: client.require_pkce ?? true,
           disabled: client.disabled ?? false,
+          adminDisabled: adminDisabledIds.has(client.client_id),
           owner: null,
           verified: null,
         }))}
@@ -79,6 +98,7 @@ export default async function AppsPage() {
           description="HoshID に登録されている全てのアプリです。"
           emptyMessage="登録されているアプリはありません。"
           deletable={false}
+          variant="admin"
           clients={allClients.map((client) => ({
             clientId: client.clientId,
             clientName: client.name ?? null,
@@ -87,6 +107,7 @@ export default async function AppsPage() {
             isPublic: client.tokenEndpointAuthMethod === "none",
             requirePkce: client.requirePKCE ?? true,
             disabled: client.disabled ?? false,
+            adminDisabled: adminDisabledIds.has(client.clientId),
             owner: client.user
               ? (client.user.nickname ?? client.user.name ?? client.user.email)
               : client.userId

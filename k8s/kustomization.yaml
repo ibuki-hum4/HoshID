@@ -29,6 +29,6 @@ resources:
 # コードが動く。CI は両方に同じタグを付けて push する。
 images:
   - name: ghcr.io/ibuki-hum4/hoshid
-    newTag: v0.1.3
+    newTag: v0.3.0
   - name: ghcr.io/ibuki-hum4/hoshid-migrator
-    newTag: v0.1.3
+    newTag: v0.3.0

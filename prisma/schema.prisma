@@ -365,13 +365,18 @@ model Avatar {
 /// 足さず別テーブルに持つ。
 
 model OauthClientTrust {
-  clientId   String    @id
-  verified   Boolean   @default(false)
-  verifiedBy String?
-  verifiedAt DateTime?
-  note       String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  clientId        String    @id
+  verified        Boolean   @default(false)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  /// 管理者が止めたかどうか。true の間は所有者が自分で再開できない。
+  /// 実際の停止は oauthClient.disabled が担い、これは「誰が止めたか」の印。
+  adminDisabled   Boolean   @default(false)
+  adminDisabledBy String?
+  adminDisabledAt DateTime?
+  note            String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("oauth_client_trust")
 }

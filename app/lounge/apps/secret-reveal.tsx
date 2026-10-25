@@ -15,26 +15,28 @@ import {
 import { Label } from "@/components/ui/label";
 
 /**
- * 作成直後にだけ client_secret を見せる。
+ * 作成直後と再発行直後にだけ client_secret を見せる。
  * サーバはハッシュ化して保存するので、この画面を閉じると二度と取得できない。
  */
 export function SecretReveal({
   clientId,
   clientSecret,
   onClose,
+  title = "アプリを作成しました",
+  description = "アプリ側の設定に転記してください。",
 }: {
   clientId: string;
   clientSecret: string | null;
   onClose: () => void;
+  title?: string;
+  description?: string;
 }) {
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>アプリを作成しました</DialogTitle>
-          <DialogDescription>
-            アプリ側の設定に転記してください。
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

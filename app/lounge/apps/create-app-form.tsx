@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Plus, ShieldCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,9 +15,17 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-import { createApp } from "./actions";
+import { createApp, type TokenEndpointAuthMethod } from "./actions";
+import { RedirectUriFields } from "./redirect-uri-fields";
 import { ScopePicker } from "./scope-picker";
 import { SecretReveal } from "./secret-reveal";
 
@@ -57,6 +65,8 @@ export function CreateAppForm() {
   const [redirectUris, setRedirectUris] = useState<string[]>([""]);
   const [scopes, setScopes] = useState<string[]>(["openid", "profile", "email"]);
   const [publicClient, setPublicClient] = useState(false);
+  const [tokenEndpointAuthMethod, setTokenEndpointAuthMethod] =
+    useState<TokenEndpointAuthMethod>("client_secret_basic");
   const [requirePkce, setRequirePkce] = useState(true);
   const [clientCredentials, setClientCredentials] = useState(false);
   const [deviceCode, setDeviceCode] = useState(false);
@@ -76,6 +86,7 @@ export function CreateAppForm() {
         redirectUris,
         scopes,
         publicClient,
+        tokenEndpointAuthMethod,
         requirePkce,
         clientCredentials,
         deviceCode,
@@ -92,6 +103,7 @@ export function CreateAppForm() {
       setRedirectUris([""]);
       setScopes(["openid", "profile", "email"]);
       setPublicClient(false);
+      setTokenEndpointAuthMethod("client_secret_basic");
       setRequirePkce(true);
       setClientCredentials(false);
       setDeviceCode(false);
@@ -140,57 +152,7 @@ export function CreateAppForm() {
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label>
-              リダイレクト URI <span className="text-destructive">*</span>
-            </Label>
-            <p className="text-muted-foreground text-xs">
-              認証後の戻り先。完全一致で照合されるため、末尾のスラッシュまで正確に。
-              公開ホストは https のみ、http は localhost と 127.0.0.1 のみ使えます。
-            </p>
-
-            {redirectUris.map((uri, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  value={uri}
-                  inputMode="url"
-                  placeholder="https://app.example.com/callback"
-                  onChange={(event) =>
-                    setRedirectUris((current) =>
-                      current.map((v, i) => (i === index ? event.target.value : v)),
-                    )
-                  }
-                />
-                {redirectUris.length > 1 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    aria-label="この URI を削除"
-                    onClick={() =>
-                      setRedirectUris((current) =>
-                        current.filter((_, i) => i !== index),
-                      )
-                    }
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-fit"
-              onClick={() => setRedirectUris((current) => [...current, ""])}
-            >
-              <Plus className="size-4" aria-hidden />
-              URI を追加
-            </Button>
-          </div>
+          <RedirectUriFields value={redirectUris} onChange={setRedirectUris} />
 
           <div className="grid gap-2">
             <Label>
@@ -238,6 +200,35 @@ export function CreateAppForm() {
               />
             </div>
           </div>
+
+          {!publicClient ? (
+            <div className="grid gap-2">
+              <Label htmlFor="token-endpoint-auth-method">シークレットの送り方</Label>
+              <p className="text-muted-foreground text-xs">
+                アプリがトークンを取りに来るときの方式。アプリの設定に合わせて選んでください。
+                登録後は変更できません。
+              </p>
+              <Select
+                value={tokenEndpointAuthMethod}
+                disabled={pending}
+                onValueChange={(value) =>
+                  setTokenEndpointAuthMethod(value as TokenEndpointAuthMethod)
+                }
+              >
+                <SelectTrigger id="token-endpoint-auth-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="client_secret_basic">
+                    ヘッダーで送る（client_secret_basic）
+                  </SelectItem>
+                  <SelectItem value="client_secret_post">
+                    ボディで送る（client_secret_post）
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="grid gap-2">
             <Label>追加で使う機能</Label>
