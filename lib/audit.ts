@@ -29,7 +29,7 @@ export const AUDIT_ACTIONS = {
   "client.disable": "アプリを停止",
   "client.enable": "アプリを再開",
   "client.rotate-secret": "シークレットを再発行",
-  "client.update-redirect-uris": "リダイレクト URI を変更",
+  "client.update-redirect-uris": "アプリの戻り先を変更",
   "announcement.create": "お知らせを作成",
   "announcement.update": "お知らせを更新",
   "announcement.delete": "お知らせを削除",

@@ -33,13 +33,15 @@ import {
   setClientVerified,
   updateRedirectUris,
 } from "./actions";
-import { RedirectUriFields } from "./redirect-uri-fields";
+import { POST_LOGOUT_DESCRIPTION, RedirectUriFields } from "./redirect-uri-fields";
 import { SecretReveal } from "./secret-reveal";
 
 type AppRow = {
   clientId: string;
   clientName: string | null;
   redirectUris: string[];
+  enableEndSession: boolean;
+  postLogoutRedirectUris: string[];
   scope: string;
   isPublic: boolean;
   requirePkce: boolean;
@@ -81,6 +83,8 @@ export function AppList({
   } | null>(null);
   const [editing, setEditing] = useState<AppRow | null>(null);
   const [editUris, setEditUris] = useState<string[]>([]);
+  const [editEndSession, setEditEndSession] = useState(false);
+  const [editPostLogoutUris, setEditPostLogoutUris] = useState<string[]>([]);
   const [editError, setEditError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -241,6 +245,19 @@ export function AppList({
               </ul>
             </div>
 
+            {client.enableEndSession && client.postLogoutRedirectUris.length > 0 ? (
+              <div>
+                <p className="text-muted-foreground text-xs">ログアウト後の戻り先</p>
+                <ul className="mt-1 space-y-0.5">
+                  {client.postLogoutRedirectUris.map((uri) => (
+                    <li key={uri} className="font-mono text-xs break-all">
+                      {uri}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             {variant === "owner" ? (
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -249,12 +266,18 @@ export function AppList({
                   disabled={pending}
                   onClick={() => {
                     setEditUris(client.redirectUris.length > 0 ? client.redirectUris : [""]);
+                    setEditEndSession(client.enableEndSession);
+                    setEditPostLogoutUris(
+                      client.postLogoutRedirectUris.length > 0
+                        ? client.postLogoutRedirectUris
+                        : [""],
+                    );
                     setEditError(null);
                     setEditing(client);
                   }}
                 >
                   <Pencil className="size-4" aria-hidden />
-                  URI を編集
+                  戻り先を編集
                 </Button>
                 {client.isPublic ? null : (
                   <Button
@@ -334,7 +357,7 @@ export function AppList({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>リダイレクト URI を編集</DialogTitle>
+            <DialogTitle>戻り先を編集</DialogTitle>
             <DialogDescription>
               {editing?.clientName ?? editing?.clientId} の戻り先を変更します。保存した
               時点から、一覧にない URI への戻りは拒否されます。
@@ -349,6 +372,31 @@ export function AppList({
 
           <RedirectUriFields value={editUris} onChange={setEditUris} />
 
+          <div className="bg-muted/40 flex items-start justify-between gap-3 rounded-lg p-4">
+            <div>
+              <p className="text-sm font-medium">アプリからのログアウト</p>
+              <p className="text-muted-foreground text-xs">
+                アプリ側の操作で HoshID のセッションも終了できるようにします。
+              </p>
+            </div>
+            <Switch
+              checked={editEndSession}
+              disabled={pending}
+              onCheckedChange={setEditEndSession}
+              aria-label="アプリからのログアウト"
+            />
+          </div>
+
+          {editEndSession ? (
+            <RedirectUriFields
+              value={editPostLogoutUris}
+              onChange={setEditPostLogoutUris}
+              label="ログアウト後の戻り先"
+              description={POST_LOGOUT_DESCRIPTION}
+              required={false}
+            />
+          ) : null}
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               やめる
@@ -360,7 +408,11 @@ export function AppList({
                 if (!target) return;
                 setEditError(null);
                 startTransition(async () => {
-                  const result = await updateRedirectUris(target.clientId, editUris);
+                  const result = await updateRedirectUris(target.clientId, {
+                    redirectUris: editUris,
+                    endSession: editEndSession,
+                    postLogoutRedirectUris: editPostLogoutUris,
+                  });
                   if (!result.ok) {
                     setEditError(result.message);
                     return;

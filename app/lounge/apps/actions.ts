@@ -62,6 +62,45 @@ function resolveRedirectUris(
   return { ok: true, redirectUris, applicationType: isLoopback ? "native" : "web" };
 }
 
+/**
+ * ログアウト後の戻り先を整える。0件でもよい（その場合はログアウト完了画面が出る）。
+ *
+ * Better Auth はこれに SafeUrlSchema しか当てず、独自スキームまで通す。
+ * リダイレクト URI と同じ規則（公開ホストは https、http はループバックのみ）を
+ * こちらで課す。
+ */
+function resolvePostLogoutRedirectUris(
+  input: string[],
+): { ok: true; uris: string[] } | { ok: false; message: string } {
+  const uris = input.map((uri) => uri.trim()).filter(Boolean);
+
+  for (const uri of uris) {
+    let url: URL;
+    try {
+      url = new URL(uri);
+    } catch {
+      return { ok: false, message: `ログアウト後の戻り先が URL として読めません: ${uri}` };
+    }
+    const isLoopback =
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "[::1]";
+    const allowed =
+      !uri.includes("#") &&
+      !url.username &&
+      !url.password &&
+      (url.protocol === "https:" ? !isLoopback : url.protocol === "http:" && isLoopback);
+    if (!allowed) {
+      return {
+        ok: false,
+        message: `ログアウト後の戻り先は、公開ホストの https か localhost の http にしてください: ${uri}`,
+      };
+    }
+  }
+
+  return { ok: true, uris };
+}
+
 export async function createApp(input: {
   clientName: string;
   redirectUris: string[];
@@ -77,6 +116,8 @@ export async function createApp(input: {
   deviceCode: boolean;
   /** RP からのログアウト要求を受け付ける。 */
   endSession: boolean;
+  /** endSession が true のときだけ使う。完全一致した場合だけ戻す。 */
+  postLogoutRedirectUris: string[];
   clientUri?: string;
 }): Promise<CreateResult> {
   const user = await requireApprovedUser();
@@ -108,6 +149,13 @@ export async function createApp(input: {
     return { ok: false, message: "シークレットの送り方を選んでください。" };
   }
 
+  const postLogout = resolvePostLogoutRedirectUris(
+    input.endSession ? input.postLogoutRedirectUris : [],
+  );
+  if (!postLogout.ok) {
+    return postLogout;
+  }
+
   try {
     const client = await auth.api.createOAuthClient({
       headers: await headers(),
@@ -133,6 +181,10 @@ export async function createApp(input: {
           ? "none"
           : input.tokenEndpointAuthMethod,
         ...(input.clientUri ? { client_uri: input.clientUri } : {}),
+        // Better Auth は空配列を受け付けない（min(1)）。
+        ...(postLogout.uris.length > 0
+          ? { post_logout_redirect_uris: postLogout.uris }
+          : {}),
       },
     });
 
@@ -237,22 +289,42 @@ export async function rotateAppSecret(
   return { ok: true, clientSecret };
 }
 
-/** リダイレクト URI を差し替える。検証は作成時と同じ（resolveRedirectUris）。 */
+/**
+ * 戻り先（リダイレクト URI・アプリからのログアウト・ログアウト後の戻り先）を
+ * 差し替える。検証は作成時と同じ。
+ */
 export async function updateRedirectUris(
   clientId: string,
-  redirectUris: string[],
+  input: {
+    redirectUris: string[];
+    endSession: boolean;
+    /** endSession が false のときは無視し、登録済みの値はそのまま残す。 */
+    postLogoutRedirectUris: string[];
+  },
 ): Promise<SimpleResult> {
   const actor = await requireApprovedUser();
 
-  const resolved = resolveRedirectUris(redirectUris);
+  const resolved = resolveRedirectUris(input.redirectUris);
   if (!resolved.ok) {
     return resolved;
+  }
+
+  const postLogout = input.endSession
+    ? resolvePostLogoutRedirectUris(input.postLogoutRedirectUris)
+    : null;
+  if (postLogout && !postLogout.ok) {
+    return postLogout;
   }
 
   // 監査ログに変更前を残すため、更新の前に読む。
   const before = await prisma.oauthClient.findFirst({
     where: { clientId, userId: actor.id },
-    select: { name: true, redirectUris: true },
+    select: {
+      name: true,
+      redirectUris: true,
+      enableEndSession: true,
+      postLogoutRedirectUris: true,
+    },
   });
   if (!before) {
     return { ok: false, message: "対象のアプリが見つかりませんでした。" };
@@ -267,6 +339,9 @@ export async function updateRedirectUris(
           redirect_uris: resolved.redirectUris,
           // 作成時の値のままだと、Web アプリに localhost を足しただけで弾かれる。
           application_type: resolved.applicationType,
+          ...(postLogout && postLogout.uris.length > 0
+            ? { post_logout_redirect_uris: postLogout.uris }
+            : {}),
         },
       },
     });
@@ -274,14 +349,29 @@ export async function updateRedirectUris(
     return { ok: false, message: describeError(error, "変更できませんでした。") };
   }
 
+  // 利用者向けの更新 API では変えられない項目を、所有者本人のレコードにだけ
+  // 書き込む。enable_end_session は更新項目に無く、戻り先は空配列を受け付けない。
+  await prisma.oauthClient.updateMany({
+    where: { clientId, userId: actor.id },
+    data: {
+      enableEndSession: input.endSession,
+      ...(postLogout && postLogout.uris.length === 0 ? { postLogoutRedirectUris: [] } : {}),
+    },
+  });
+
   // URI は秘密ではない。乗っ取られて書き換えられたときに辿れるよう、前後を残す。
+  const afterPostLogout = postLogout ? postLogout.uris : before.postLogoutRedirectUris;
   await recordAudit({
     actor,
     action: "client.update-redirect-uris",
     targetType: "oauthClient",
     targetId: clientId,
     targetLabel: before.name ?? clientId,
-    detail: `${before.redirectUris.join(" ")} → ${resolved.redirectUris.join(" ")}`,
+    detail: [
+      `リダイレクト URI: ${before.redirectUris.join(" ")} → ${resolved.redirectUris.join(" ")}`,
+      `アプリからのログアウト: ${before.enableEndSession ? "ON" : "OFF"} → ${input.endSession ? "ON" : "OFF"}`,
+      `ログアウト後の戻り先: ${before.postLogoutRedirectUris.join(" ") || "(なし)"} → ${afterPostLogout.join(" ") || "(なし)"}`,
+    ].join(" / "),
   });
 
   revalidatePath("/lounge/apps");

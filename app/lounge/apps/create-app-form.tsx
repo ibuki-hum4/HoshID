@@ -25,7 +25,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 import { createApp, type TokenEndpointAuthMethod } from "./actions";
-import { RedirectUriFields } from "./redirect-uri-fields";
+import { POST_LOGOUT_DESCRIPTION, RedirectUriFields } from "./redirect-uri-fields";
 import { ScopePicker } from "./scope-picker";
 import { SecretReveal } from "./secret-reveal";
 
@@ -71,6 +71,7 @@ export function CreateAppForm() {
   const [clientCredentials, setClientCredentials] = useState(false);
   const [deviceCode, setDeviceCode] = useState(false);
   const [endSession, setEndSession] = useState(false);
+  const [postLogoutRedirectUris, setPostLogoutRedirectUris] = useState<string[]>([""]);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{
     clientId: string;
@@ -91,6 +92,7 @@ export function CreateAppForm() {
         clientCredentials,
         deviceCode,
         endSession,
+        postLogoutRedirectUris,
       });
 
       if (!result.ok) {
@@ -108,6 +110,7 @@ export function CreateAppForm() {
       setClientCredentials(false);
       setDeviceCode(false);
       setEndSession(false);
+      setPostLogoutRedirectUris([""]);
     });
   }
 
@@ -267,6 +270,16 @@ export function CreateAppForm() {
                 onChange={setEndSession}
               />
             </div>
+
+            {endSession ? (
+              <RedirectUriFields
+                value={postLogoutRedirectUris}
+                onChange={setPostLogoutRedirectUris}
+                label="ログアウト後の戻り先"
+                description={POST_LOGOUT_DESCRIPTION}
+                required={false}
+              />
+            ) : null}
           </div>
 
           {!publicClient && !requirePkce ? (
