@@ -82,7 +82,7 @@ export function SignInForm() {
   async function onSubmit(values: z.infer<typeof schema>) {
     setError(null);
 
-    const { error: signInError } = await authClient.signIn.email({
+    const { data, error: signInError } = await authClient.signIn.email({
       email: values.email,
       password: values.password,
     });
@@ -111,6 +111,14 @@ export function SignInForm() {
       setError(
         "ログインできませんでした。アカウントがまだ承認されていないか、一時的な問題が起きています。",
       );
+      return;
+    }
+
+    // 2FA が残っている場合はセッションがまだ無い。遷移は auth-client の
+    // onTwoFactorRedirect が /two-factor へ済ませているので、ここで上書きしない。
+    // 上書きすると /lounge や認可エンドポイントがセッション無しで
+    // ログイン画面へ戻し、ボタンを押しても再読み込みされるだけに見える。
+    if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
       return;
     }
 
